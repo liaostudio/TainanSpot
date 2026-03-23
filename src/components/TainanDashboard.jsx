@@ -344,7 +344,7 @@ export function TainanDashboardView({ model, onSelectProject }) {
             <span className="filter-label">已經蓋好還是預售屋</span>
             <div className="chip-row">
               <button type="button" className={propertyTypeFilter.includes('existing') ? 'chip active' : 'chip'} onClick={() => togglePropertyType('existing')}>
-                已經蓋好的房子
+                中古屋
               </button>
               <button type="button" className={propertyTypeFilter.includes('presale') ? 'chip active' : 'chip'} onClick={() => togglePropertyType('presale')}>
                 預售屋
@@ -506,7 +506,7 @@ export function TainanDashboardView({ model, onSelectProject }) {
             </div>
           </ChartCard>
 
-          <ChartCard title="已經蓋好的房子和預售屋" subtitle="看看大家比較常買哪一種。">
+          <ChartCard title="中古屋和預售屋" subtitle="看看大家比較常買哪一種。">
             <div className="chart-wrap medium">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>

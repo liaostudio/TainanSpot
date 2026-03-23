@@ -158,7 +158,7 @@ export function useDashboardModel() {
       isRealMode
         ? buildPropertyTypeMix(districtRecords)
         : [
-            { name: '已經蓋好的房子', value: 65 },
+            { name: '中古屋', value: 65 },
             { name: '預售屋', value: 35 },
           ],
     [districtRecords, isRealMode],
