@@ -25,6 +25,10 @@ function getMedian(numbers) {
   return (sorted[middle - 1] + sorted[middle]) / 2
 }
 
+function sum(values) {
+  return values.reduce((total, value) => total + value, 0)
+}
+
 export function summarizeCity(overviews) {
   const totalVolume = overviews.reduce((sum, item) => sum + item.volume, 0)
   const medianLike =
@@ -168,5 +172,112 @@ export function buildInsights(records) {
     volatility: cv > 10 ? '波動偏高' : cv > 6 ? '波動中等' : '波動中低',
     liquidity: current.length > 80 ? '去化很快' : current.length > 30 ? '去化穩定' : '去化偏慢',
     momentum: current.length > records.length * 0.35 ? '大幅擴量' : '動能平穩',
+  }
+}
+
+export function buildRoomLayout(records) {
+  const rooms = { '1房': 0, '2房': 0, '3房': 0, '4房以上': 0, '未標示': 0 }
+
+  records.forEach((record) => {
+    if (record.roomCount === 1) rooms['1房'] += 1
+    else if (record.roomCount === 2) rooms['2房'] += 1
+    else if (record.roomCount === 3) rooms['3房'] += 1
+    else if (record.roomCount >= 4) rooms['4房以上'] += 1
+    else rooms['未標示'] += 1
+  })
+
+  return Object.entries(rooms)
+    .map(([name, value]) => ({ name, value }))
+    .filter((item) => item.value > 0)
+}
+
+export function buildPropertyTypeMix(records) {
+  const counts = { 一般成屋: 0, 預售建案: 0 }
+
+  records.forEach((record) => {
+    if (record.type === 'presale') counts['預售建案'] += 1
+    else counts['一般成屋'] += 1
+  })
+
+  return Object.entries(counts)
+    .map(([name, value]) => ({ name, value }))
+    .filter((item) => item.value > 0)
+}
+
+export function buildVolumeSeries(records, timeFrame) {
+  return processTrendData(records, timeFrame).map((item) => ({
+    period: item.period,
+    volume: item.volume,
+  }))
+}
+
+export function buildComparisonSeries(recordsByDistrict, districtNames, timeFrame) {
+  const periods = new Map()
+
+  districtNames.forEach((district) => {
+    const records = recordsByDistrict.get(district) ?? []
+    processTrendData(records, timeFrame).forEach((entry) => {
+      if (!periods.has(entry.period)) periods.set(entry.period, { period: entry.period })
+      periods.get(entry.period)[district] = entry.price
+    })
+  })
+
+  return Array.from(periods.values()).sort((a, b) => a.period.localeCompare(b.period))
+}
+
+export function buildProjectDetail(projectName, records) {
+  const projectRecords = records
+    .filter((record) => (record.locationName || record.projectName) === projectName)
+    .sort((a, b) => {
+      if (a.year !== b.year) return a.year - b.year
+      return a.month - b.month
+    })
+
+  if (projectRecords.length === 0) return null
+
+  const prices = projectRecords.map((record) => record.unitPricePing).filter((price) => price > 0)
+  const totalPrices = projectRecords.map((record) => record.totalPrice).filter((price) => price > 0)
+  const pings = projectRecords.map((record) => record.totalPing).filter((ping) => ping > 0)
+  const projectMedian = getMedian(prices)
+  const maxRecord = [...projectRecords].sort((a, b) => b.unitPricePing - a.unitPricePing)[0]
+  const minRecord = [...projectRecords].sort((a, b) => a.unitPricePing - b.unitPricePing)[0]
+
+  const groupedFloors = {}
+  projectRecords.forEach((record) => {
+    const levelKey = record.level || '未標示樓層'
+    if (!groupedFloors[levelKey]) groupedFloors[levelKey] = []
+    groupedFloors[levelKey].push(record)
+  })
+
+  const floorStats = Object.entries(groupedFloors)
+    .map(([level, items]) => ({
+      level,
+      volume: items.length,
+      avgPrice: Number((sum(items.map((item) => item.unitPricePing)) / items.length).toFixed(2)),
+      avgPing: Number((sum(items.map((item) => item.totalPing || 0)) / items.length).toFixed(1)),
+      maxPrice: Number(Math.max(...items.map((item) => item.unitPricePing)).toFixed(2)),
+      minPrice: Number(Math.min(...items.map((item) => item.unitPricePing)).toFixed(2)),
+    }))
+    .sort((a, b) => b.volume - a.volume)
+
+  const trend = withMovingAverage(processTrendData(projectRecords, '1y'))
+  const roomMix = buildRoomLayout(projectRecords)
+  const typeMix = buildPropertyTypeMix(projectRecords)
+
+  return {
+    projectName,
+    records: [...projectRecords].reverse(),
+    trend,
+    roomMix,
+    typeMix,
+    floorStats,
+    stats: {
+      medianPrice: Number(projectMedian.toFixed(2)),
+      avgTotalPrice: totalPrices.length ? Math.round(sum(totalPrices) / totalPrices.length / 10000) : 0,
+      avgPing: pings.length ? Number((sum(pings) / pings.length).toFixed(1)) : 0,
+      volume: projectRecords.length,
+      maxRecord,
+      minRecord,
+    },
   }
 }
