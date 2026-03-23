@@ -5,7 +5,9 @@ import {
   Building2,
   FileText,
   Home,
+  LockKeyhole,
   MapPinned,
+  LogOut,
   Search,
   ShieldCheck,
 } from 'lucide-react'
@@ -37,6 +39,12 @@ const routeTabs = [
 ]
 
 const pieColors = ['#b45309', '#d97706', '#f59e0b', '#fbbf24']
+const ADMIN_SESSION_KEY = 'tainanspot-admin-auth'
+const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || '1234'
+
+function normalizePassword(value) {
+  return value.replace(/[０-９]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 65248))
+}
 
 function buildHash(page, projectName) {
   if (page === 'project' && projectName) return `#project/${encodeURIComponent(projectName)}`
@@ -83,6 +91,35 @@ function SiteNav({ page, onNavigate }) {
         </nav>
       </div>
     </header>
+  )
+}
+
+function AdminLoginCard({ password, onPasswordChange, onSubmit, authError }) {
+  return (
+    <section className="panel admin-login-panel">
+      <div className="panel-head">
+        <div>
+          <h3>管理登入</h3>
+          <p>只有輸入管理密碼後，才會顯示 CSV 累積匯入工具。</p>
+        </div>
+        <LockKeyhole className="panel-badge" />
+      </div>
+      <form className="admin-login-form" onSubmit={onSubmit}>
+        <label className="admin-login-field">
+          <span>管理密碼</span>
+          <input
+            type="password"
+            value={password}
+            onChange={(event) => onPasswordChange(event.target.value)}
+            placeholder="請輸入管理密碼"
+          />
+        </label>
+        <button type="submit" className="cta-primary">
+          進入匯入管理
+        </button>
+      </form>
+      {authError ? <p className="import-feedback error">{authError}</p> : null}
+    </section>
   )
 }
 
@@ -421,6 +458,9 @@ function AboutPage() {
 export function TainanSite() {
   const model = useDashboardModel()
   const [route, setRoute] = useState({ page: 'home', projectName: null })
+  const [adminPasswordInput, setAdminPasswordInput] = useState('')
+  const [adminAuthError, setAdminAuthError] = useState('')
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false)
 
   useEffect(() => {
     const syncFromHash = () => {
@@ -430,6 +470,11 @@ export function TainanSite() {
     syncFromHash()
     window.addEventListener('hashchange', syncFromHash)
     return () => window.removeEventListener('hashchange', syncFromHash)
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    setIsAdminAuthenticated(window.sessionStorage.getItem(ADMIN_SESSION_KEY) === 'true')
   }, [])
 
   const projectDetail = useMemo(
@@ -446,6 +491,25 @@ export function TainanSite() {
     navigate('project', { projectName })
   }
 
+  const handleAdminLogin = (event) => {
+    event.preventDefault()
+    if (normalizePassword(adminPasswordInput) === normalizePassword(ADMIN_PASSWORD)) {
+      window.sessionStorage.setItem(ADMIN_SESSION_KEY, 'true')
+      setIsAdminAuthenticated(true)
+      setAdminAuthError('')
+      setAdminPasswordInput('')
+      return
+    }
+    setAdminAuthError('管理密碼不正確，請再試一次。')
+  }
+
+  const handleAdminLogout = () => {
+    window.sessionStorage.removeItem(ADMIN_SESSION_KEY)
+    setIsAdminAuthenticated(false)
+    setAdminPasswordInput('')
+    setAdminAuthError('')
+  }
+
   return (
     <div className="site-shell">
       <SiteNav page={route.page} onNavigate={navigate} />
@@ -453,7 +517,22 @@ export function TainanSite() {
       <main className="site-main">
         {route.page === 'home' ? <HomePage model={model} onNavigate={navigate} onOpenProject={openProject} /> : null}
         {route.page === 'district' ? <DistrictPage model={model} onNavigate={navigate} onOpenProject={openProject} /> : null}
-        {route.page === 'pro' ? <TainanDashboardView model={model} onSelectProject={openProject} /> : null}
+        {route.page === 'pro' ? (
+          <TainanDashboardView
+            model={model}
+            onSelectProject={openProject}
+            canManageImports={isAdminAuthenticated}
+            onLogoutImports={handleAdminLogout}
+            loginCard={
+              <AdminLoginCard
+                password={adminPasswordInput}
+                onPasswordChange={setAdminPasswordInput}
+                onSubmit={handleAdminLogin}
+                authError={adminAuthError}
+              />
+            }
+          />
+        ) : null}
         {route.page === 'about' ? <AboutPage /> : null}
         {route.page === 'project' && projectDetail ? <ProjectDetailView detail={projectDetail} onBack={() => navigate('district')} /> : null}
       </main>

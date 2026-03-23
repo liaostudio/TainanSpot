@@ -190,8 +190,9 @@ export function ProjectDetailView({ detail, onBack }) {
   )
 }
 
-export function TainanDashboardView({ model, onSelectProject }) {
+export function TainanDashboardView({ model, onSelectProject, canManageImports = false, onLogoutImports, loginCard = null }) {
   const fileInputRef = useRef(null)
+  const folderInputRef = useRef(null)
   const {
     activeTab,
     setActiveTab,
@@ -209,7 +210,9 @@ export function TainanDashboardView({ model, onSelectProject }) {
     isRealMode,
     importMessage,
     importError,
+    persistedAt,
     loadFiles,
+    clearImportedData,
     availableDistricts,
     citySummary,
     cityTrend,
@@ -278,39 +281,70 @@ export function TainanDashboardView({ model, onSelectProject }) {
         </div>
       </header>
 
-      <section className="panel upload-panel">
-        <div className="panel-head compact">
-          <div>
-            <h3>CSV 匯入與解析</h3>
-            <p>把房價資料檔丟進來，網站會幫你整理。</p>
+      {canManageImports ? (
+        <section className="panel upload-panel">
+          <div className="panel-head compact">
+            <div>
+              <h3>CSV 累積匯入</h3>
+              <p>可以一次匯入很多期 CSV，資料會累積存在這台電腦，下次打開會自動接續。</p>
+            </div>
+            <div className="upload-actions">
+              <button type="button" className="upload-trigger secondary" onClick={() => folderInputRef.current?.click()}>
+                {isProcessing ? <Loader2 className="spin" size={16} /> : <Upload size={16} />}
+                匯入資料夾
+              </button>
+              <button type="button" className="upload-trigger" onClick={() => fileInputRef.current?.click()}>
+                {isProcessing ? <Loader2 className="spin" size={16} /> : <Upload size={16} />}
+                匯入多個 CSV
+              </button>
+              <button type="button" className="upload-trigger ghost" onClick={() => clearImportedData()}>
+                清除累積資料
+              </button>
+              <button type="button" className="upload-trigger ghost" onClick={onLogoutImports}>
+                登出管理
+              </button>
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv"
+              multiple
+              hidden
+              onChange={(event) => {
+                const files = Array.from(event.target.files || [])
+                loadFiles(files)
+                event.target.value = ''
+              }}
+            />
+            <input
+              ref={folderInputRef}
+              type="file"
+              accept=".csv"
+              multiple
+              webkitdirectory=""
+              directory=""
+              hidden
+              onChange={(event) => {
+                const files = Array.from(event.target.files || []).filter((file) => file.name.toLowerCase().endsWith('.csv'))
+                loadFiles(files)
+                event.target.value = ''
+              }}
+            />
           </div>
-          <button type="button" className="upload-trigger" onClick={() => fileInputRef.current?.click()}>
-            {isProcessing ? <Loader2 className="spin" size={16} /> : <Upload size={16} />}
-            匯入 CSV
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".csv"
-            multiple
-            hidden
-            onChange={(event) => {
-              const files = Array.from(event.target.files || [])
-              loadFiles(files)
-              event.target.value = ''
-            }}
-          />
-        </div>
-        <div className="upload-stats">
-          <span className="upload-chip">現在資料：{isRealMode ? '真實資料' : '展示資料'}</span>
-          <span className="upload-chip">共讀到：{uploadStats.totalRaw.toLocaleString()} 筆</span>
-          <span className="upload-chip">排除掉：{uploadStats.totalExcluded.toLocaleString()} 筆</span>
-          <span className="upload-chip">重複的：{uploadStats.duplicateCount.toLocaleString()} 筆</span>
-          <span className="upload-chip">{latestDataDate ? `最新資料：${latestDataDate}` : '你也可以把資料檔放進 public 自動讀取'}</span>
-        </div>
-        {importMessage ? <p className="import-feedback success">{importMessage}</p> : null}
-        {importError ? <p className="import-feedback error">{importError}</p> : null}
-      </section>
+          <div className="upload-stats">
+            <span className="upload-chip">現在資料：{isRealMode ? '真實資料' : '展示資料'}</span>
+            <span className="upload-chip">共讀到：{uploadStats.totalRaw.toLocaleString()} 筆</span>
+            <span className="upload-chip">排除掉：{uploadStats.totalExcluded.toLocaleString()} 筆</span>
+            <span className="upload-chip">重複的：{uploadStats.duplicateCount.toLocaleString()} 筆</span>
+            <span className="upload-chip">{latestDataDate ? `最新資料：${latestDataDate}` : '你也可以把資料檔放進 public 自動讀取'}</span>
+            <span className="upload-chip">{persistedAt ? `上次累積保存：${new Date(persistedAt).toLocaleString('zh-TW')}` : '目前還沒有保存過累積資料'}</span>
+          </div>
+          {importMessage ? <p className="import-feedback success">{importMessage}</p> : null}
+          {importError ? <p className="import-feedback error">{importError}</p> : null}
+        </section>
+      ) : (
+        loginCard
+      )}
 
       <section className="panel filter-panel">
         <div className="panel-head compact">

@@ -223,6 +223,27 @@
   cursor: pointer;
 }
 
+.upload-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.upload-trigger.secondary,
+.upload-trigger.ghost {
+  background: #fffaf3;
+  color: #6b573f;
+}
+
+.upload-trigger.secondary {
+  border: 1px solid rgba(130, 101, 69, 0.16);
+}
+
+.upload-trigger.ghost {
+  border: 1px dashed rgba(130, 101, 69, 0.24);
+}
+
 .upload-stats {
   display: flex;
   flex-wrap: wrap;
@@ -655,7 +676,8 @@
 
   .ranking-row,
   .filter-row,
-  .project-hero-head {
+  .project-hero-head,
+  .upload-actions {
     flex-direction: column;
     align-items: stretch;
   }
@@ -902,6 +924,38 @@
   gap: 10px;
 }
 
+.admin-login-panel {
+  border-radius: 28px;
+  padding: 22px;
+}
+
+.admin-login-form {
+  display: flex;
+  align-items: end;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.admin-login-field {
+  display: grid;
+  gap: 8px;
+  min-width: 260px;
+  flex: 1;
+  color: #6b573f;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.admin-login-field input {
+  min-height: 46px;
+  border-radius: 16px;
+  border: 1px solid rgba(130, 101, 69, 0.16);
+  background: #fffaf3;
+  color: #312318;
+  padding: 0 14px;
+  font-size: 1rem;
+}
+
 @media (max-width: 1120px) {
   .hero-summary-grid,
   .steps-grid,
@@ -943,6 +997,10 @@
   .cta-panel {
     padding: 18px;
     border-radius: 22px;
+  }
+
+  .admin-login-form {
+    align-items: stretch;
   }
 
   .simple-list-item {
