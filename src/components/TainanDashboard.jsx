@@ -1,0 +1,434 @@
+import { useMemo, useState } from 'react'
+import {
+  ResponsiveContainer,
+  ComposedChart,
+  LineChart,
+  BarChart,
+  PieChart,
+  Pie,
+  Cell,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Line,
+  Bar,
+  Legend,
+} from 'recharts'
+import {
+  Activity,
+  BarChart3,
+  Building2,
+  Crown,
+  Flame,
+  Layers3,
+  MapPinned,
+  ShieldCheck,
+  TrendingUp,
+} from 'lucide-react'
+import {
+  cityTrendByTab,
+  comparisonSeries,
+  districtOverviews,
+  districtTrendMap,
+  tainanGrid,
+  timeTabs,
+} from '../data/dashboardData.js'
+import { heatColor, summarizeCity, withMovingAverage, formatPrice } from '../utils/dashboard.js'
+import { MetricCard } from './MetricCard.jsx'
+import { TrendBadge } from './TrendBadge.jsx'
+import { ChartCard } from './ChartCard.jsx'
+
+const pieColors = ['#b45309', '#d97706', '#f59e0b', '#fbbf24', '#fcd34d']
+const compareColors = ['#1d4ed8', '#059669', '#d97706', '#dc2626']
+
+export function TainanDashboard() {
+  const [activeTab, setActiveTab] = useState('1y')
+  const [selectedDistrict, setSelectedDistrict] = useState('東區')
+
+  const citySummary = useMemo(() => summarizeCity(districtOverviews), [])
+  const cityTrend = useMemo(() => withMovingAverage(cityTrendByTab[activeTab]), [activeTab])
+  const districtData = districtTrendMap[selectedDistrict] ?? districtTrendMap.東區
+  const districtTrend = useMemo(
+    () => withMovingAverage(districtData.trend[activeTab] ?? districtData.trend['1y']),
+    [activeTab, districtData],
+  )
+
+  const pricedDistricts = districtOverviews.map((item) => item.price)
+  const minPrice = Math.min(...pricedDistricts)
+  const maxPrice = Math.max(...pricedDistricts)
+
+  return (
+    <div className="dashboard-page">
+      <header className="dashboard-hero">
+        <div className="hero-main">
+          <div className="hero-copy">
+            <p className="eyebrow">TainanSpot Housing Intelligence</p>
+            <h1>台南房價深度分析儀表板</h1>
+            <p className="hero-lead">
+              我把你原本那份大頁面改成比較能維護的版本，先整理成模組化儀表板，
+              保留它原本的核心感覺：全市總覽、行政區熱圖、區域趨勢、建案排行與多區比較。
+            </p>
+          </div>
+
+          <div className="hero-highlights">
+            <div className="highlight-card">
+              <Building2 className="highlight-icon" />
+              <div>
+                <p>專案版本</p>
+                <strong>模組化整合版</strong>
+              </div>
+            </div>
+            <div className="highlight-card">
+              <ShieldCheck className="highlight-icon" />
+              <div>
+                <p>目前資料模式</p>
+                <strong>先用展示資料穩定頁面</strong>
+              </div>
+            </div>
+            <div className="highlight-card">
+              <Layers3 className="highlight-icon" />
+              <div>
+                <p>下一階段</p>
+                <strong>可再接 CSV 與真實資料流</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="metric-grid">
+          <MetricCard
+            label="全市加權均價"
+            value={`${formatPrice(citySummary.price)} 萬/坪`}
+            helper="以示意交易量做加權後的城市價格中心"
+            accent="blue"
+          />
+          <MetricCard
+            label="平均年增率"
+            value={<TrendBadge value={citySummary.yoy} />}
+            helper="綜合熱門行政區的平均年增率"
+            accent="amber"
+          />
+          <MetricCard
+            label="總觀測成交量"
+            value={`${citySummary.volume} 筆`}
+            helper="目前儀表板示意採計的年度樣本量"
+            accent="slate"
+          />
+          <MetricCard
+            label="最高均價區"
+            value={`${citySummary.hottest.name} ${formatPrice(citySummary.hottest.price)}`}
+            helper="目前是善化區領先，反映科技買盤熱度"
+            accent="green"
+          />
+        </div>
+      </header>
+
+      <section className="panel filter-panel">
+        <div className="panel-head compact">
+          <div>
+            <h3>看板控制列</h3>
+            <p>把原本單一 App 的狀態濃縮成兩個最核心切換，先讓頁面穩定。</p>
+          </div>
+        </div>
+        <div className="filter-row">
+          <div className="time-tabs">
+            {timeTabs.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                className={tab.id === activeTab ? 'is-active' : ''}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          <label className="district-picker">
+            <span>分析行政區</span>
+            <select value={selectedDistrict} onChange={(event) => setSelectedDistrict(event.target.value)}>
+              {Object.keys(districtTrendMap).map((district) => (
+                <option key={district} value={district}>
+                  {district}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section className="dashboard-grid">
+        <ChartCard
+          title="全市價量趨勢"
+          subtitle="保留你原本最重要的價量合成圖，並把移動平均封裝成共用工具。"
+        >
+          <div className="chart-wrap large">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={cityTrend} margin={{ top: 12, right: 16, left: -18, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eadfce" />
+                <XAxis dataKey="period" tick={{ fontSize: 11, fill: '#7c6855' }} tickLine={false} axisLine={false} />
+                <YAxis yAxisId="left" tick={{ fontSize: 11, fill: '#8b6b36' }} tickLine={false} axisLine={false} />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  tick={{ fontSize: 11, fill: '#1d4ed8' }}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <Tooltip
+                  contentStyle={{ borderRadius: 16, border: '1px solid #eadfce', background: 'rgba(255,252,247,0.98)' }}
+                />
+                <Legend />
+                <Bar yAxisId="left" dataKey="volume" name="成交量" fill="#efc27b" radius={[8, 8, 0, 0]} />
+                <Line yAxisId="right" dataKey="price" name="均價" type="monotone" stroke="#1d4ed8" strokeWidth={3} dot={{ r: 3 }} />
+                <Line
+                  yAxisId="right"
+                  dataKey="maPrice"
+                  name="4期移動平均"
+                  type="monotone"
+                  stroke="#059669"
+                  strokeWidth={2.5}
+                  strokeDasharray="6 5"
+                  dot={false}
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </ChartCard>
+
+        <ChartCard
+          title="台南 37 區熱力格"
+          subtitle="把原本空間價格熱圖保留，但先改成乾淨的互動卡格版本。"
+        >
+          <div className="heatmap">
+            {tainanGrid.map((cell) => {
+              const overview = districtOverviews.find((item) => item.name === cell.id)
+              const isSelected = selectedDistrict === cell.id
+
+              return (
+                <button
+                  key={cell.id}
+                  type="button"
+                  style={{ gridColumn: cell.c, gridRow: cell.r }}
+                  className={`heat-cell ${heatColor(overview?.price, minPrice, maxPrice)} ${isSelected ? 'selected' : ''}`}
+                  onClick={() => {
+                    if (districtTrendMap[cell.id]) {
+                      setSelectedDistrict(cell.id)
+                    }
+                  }}
+                >
+                  <strong>{cell.id}</strong>
+                  <span>{overview ? `${formatPrice(overview.price)}萬` : '無資料'}</span>
+                </button>
+              )
+            })}
+          </div>
+        </ChartCard>
+      </section>
+
+      <section className="district-section">
+        <div className="section-title">
+          <MapPinned className="section-title-icon" />
+          <div>
+            <p className="eyebrow">District Focus</p>
+            <h2>{selectedDistrict} 深度分析</h2>
+          </div>
+        </div>
+
+        <div className="metric-grid district-metrics">
+          <MetricCard
+            label="區域中位數單價"
+            value={`${formatPrice(districtOverviews.find((item) => item.name === selectedDistrict)?.price)} 萬/坪`}
+            helper="保留原本首頁中最常被使用的行政區價格入口"
+            accent="blue"
+          />
+          <MetricCard
+            label="區域年增率"
+            value={<TrendBadge value={districtOverviews.find((item) => item.name === selectedDistrict)?.yoy} />}
+            helper="方便快速對照現在是不是強勢區域"
+            accent="amber"
+          />
+          <MetricCard
+            label="區域成交量"
+            value={`${districtOverviews.find((item) => item.name === selectedDistrict)?.volume ?? '-'} 筆`}
+            helper="先保留排行榜的決策訊號"
+            accent="slate"
+          />
+          <MetricCard
+            label="AI 市況判讀"
+            value={districtData.aiReport.health}
+            helper={`${districtData.aiReport.structure} / ${districtData.aiReport.momentum}`}
+            accent="green"
+          />
+        </div>
+
+        <div className="dashboard-grid">
+          <ChartCard
+            title="行政區價量趨勢"
+            subtitle="這塊就是原本的重點區域圖，只是把資料來源與圖表分離。"
+          >
+            <div className="chart-wrap large">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={districtTrend} margin={{ top: 12, right: 16, left: -18, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eadfce" />
+                  <XAxis dataKey="period" tick={{ fontSize: 11, fill: '#7c6855' }} tickLine={false} axisLine={false} />
+                  <YAxis yAxisId="left" tick={{ fontSize: 11, fill: '#8b6b36' }} tickLine={false} axisLine={false} />
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    tick={{ fontSize: 11, fill: '#1d4ed8' }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={{ borderRadius: 16, border: '1px solid #eadfce', background: 'rgba(255,252,247,0.98)' }}
+                  />
+                  <Legend />
+                  <Bar yAxisId="left" dataKey="volume" name="成交量" fill="#efc27b" radius={[8, 8, 0, 0]} />
+                  <Line yAxisId="right" dataKey="price" name="均價" type="monotone" stroke="#1d4ed8" strokeWidth={3} dot={{ r: 3 }} />
+                  <Line
+                    yAxisId="right"
+                    dataKey="maPrice"
+                    name="4期移動平均"
+                    type="monotone"
+                    stroke="#059669"
+                    strokeWidth={2.5}
+                    strokeDasharray="6 5"
+                    dot={false}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </ChartCard>
+
+          <ChartCard
+            title="屋齡成交佔比"
+            subtitle="把屋齡分析留著，作為後續串接真實成交資料的接口。"
+          >
+            <div className="chart-wrap medium">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={districtData.ageDistribution}
+                    dataKey="volume"
+                    nameKey="ageGroup"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={55}
+                    outerRadius={95}
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  >
+                    {districtData.ageDistribution.map((entry, index) => (
+                      <Cell key={entry.ageGroup} fill={pieColors[index % pieColors.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value, _name, item) => [`${value} 筆`, `${item.payload.ageGroup} / 均價 ${formatPrice(item.payload.price)} 萬`]}
+                    contentStyle={{ borderRadius: 16, border: '1px solid #eadfce', background: 'rgba(255,252,247,0.98)' }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </ChartCard>
+        </div>
+
+        <div className="dashboard-grid">
+          <section className="panel ai-panel">
+            <div className="panel-head">
+              <div>
+                <h3>區域 AI 體檢</h3>
+                <p>把原本頁面裡最有辨識度的白話分析保留下來，但改成結構化卡片。</p>
+              </div>
+            </div>
+            <div className="insight-grid">
+              <article className="insight-card">
+                <Flame className="insight-icon" />
+                <strong>{districtData.aiReport.structure}</strong>
+                <span>市場主力</span>
+              </article>
+              <article className="insight-card">
+                <TrendingUp className="insight-icon" />
+                <strong>{districtData.aiReport.health}</strong>
+                <span>健康度</span>
+              </article>
+              <article className="insight-card">
+                <Activity className="insight-icon" />
+                <strong>{districtData.aiReport.volatility}</strong>
+                <span>穩定度</span>
+              </article>
+              <article className="insight-card">
+                <ShieldCheck className="insight-icon" />
+                <strong>{districtData.aiReport.liquidity}</strong>
+                <span>去化速度</span>
+              </article>
+              <article className="insight-card">
+                <BarChart3 className="insight-icon" />
+                <strong>{districtData.aiReport.momentum}</strong>
+                <span>近期動能</span>
+              </article>
+            </div>
+          </section>
+
+          <section className="panel rankings-panel">
+            <div className="panel-head">
+              <div>
+                <h3>建案排行榜</h3>
+                <p>先保留原本表格的精髓，等下個階段再接完整社區深度頁。</p>
+              </div>
+              <Crown className="panel-badge" />
+            </div>
+            <div className="ranking-list">
+              {districtData.rankings.map((project, index) => (
+                <div key={project.name} className="ranking-row">
+                  <div className="ranking-main">
+                    <span className="ranking-index">#{index + 1}</span>
+                    <div>
+                      <strong>{project.name}</strong>
+                      <p>{project.type}</p>
+                    </div>
+                  </div>
+                  <div className="ranking-meta">
+                    <strong>{formatPrice(project.medianPrice)} 萬/坪</strong>
+                    <span>{project.volume} 筆</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <ChartCard
+        title="多行政區價格比較"
+        subtitle="這是把原本多區比較模組收斂成單一清楚的折線圖版本。"
+      >
+        <div className="chart-wrap compare">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={comparisonSeries} margin={{ top: 12, right: 16, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eadfce" />
+              <XAxis dataKey="period" tick={{ fontSize: 11, fill: '#7c6855' }} tickLine={false} axisLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: '#7c6855' }} tickLine={false} axisLine={false} />
+              <Tooltip
+                formatter={(value) => [`${formatPrice(value)} 萬/坪`, '單價']}
+                contentStyle={{ borderRadius: 16, border: '1px solid #eadfce', background: 'rgba(255,252,247,0.98)' }}
+              />
+              <Legend />
+              {['東區', '永康區', '善化區', '安平區'].map((district, index) => (
+                <Line
+                  key={district}
+                  type="monotone"
+                  dataKey={district}
+                  stroke={compareColors[index]}
+                  strokeWidth={3}
+                  dot={{ r: 3 }}
+                  activeDot={{ r: 5 }}
+                />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </ChartCard>
+    </div>
+  )
+}
