@@ -267,39 +267,5 @@ export function parseCSVText(text, filePropertyType, existingKeysArray = []) {
 }
 
 export function runCSVWorker(text, filePropertyType, existingKeysArray = []) {
-  return new Promise((resolve, reject) => {
-    const workerCode = `
-      ${findIndex.toString()}
-      ${parseFloor.toString()}
-      ${parseCSVText.toString()}
-      self.onmessage = function(event) {
-        try {
-          const { text, filePropertyType, existingKeysArray } = event.data
-          const result = parseCSVText(text, filePropertyType, existingKeysArray)
-          self.postMessage({ success: true, result })
-        } catch (error) {
-          self.postMessage({ success: false, error: error.message })
-        }
-      }
-    `
-
-    const blob = new Blob([workerCode], { type: 'application/javascript' })
-    const workerUrl = URL.createObjectURL(blob)
-    const worker = new Worker(workerUrl)
-
-    worker.onmessage = (event) => {
-      if (event.data.success) resolve(event.data.result)
-      else reject(new Error(event.data.error))
-      worker.terminate()
-      URL.revokeObjectURL(workerUrl)
-    }
-
-    worker.onerror = (error) => {
-      reject(error)
-      worker.terminate()
-      URL.revokeObjectURL(workerUrl)
-    }
-
-    worker.postMessage({ text, filePropertyType, existingKeysArray })
-  })
+  return Promise.resolve(parseCSVText(text, filePropertyType, existingKeysArray))
 }
