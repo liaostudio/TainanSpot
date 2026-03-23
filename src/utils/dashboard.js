@@ -168,9 +168,9 @@ export function buildRankings(records) {
       volume: entries.length,
       type: entries.some((entry) => entry.type === 'presale')
         ? entries.some((entry) => entry.type === 'existing')
-          ? '預售+成屋'
-          : '預售建案'
-        : '成屋社區',
+          ? '新舊都有'
+          : '預售屋'
+        : '已經蓋好的社區',
     }))
     .filter((item) => item.medianPrice > 0)
     .sort((a, b) => b.volume - a.volume)
@@ -193,7 +193,7 @@ export function buildInsights(records) {
   const cv = mean > 0 ? (Math.sqrt(variance) / mean) * 100 : 0
 
   return {
-    structure: presaleCount > existingCount ? '預售屋帶動' : '中古屋熱銷',
+    structure: presaleCount > existingCount ? '預售屋比較多' : '已經蓋好的房子比較多',
     health: currentMedian >= fullMedian ? '穩健走升' : '盤整觀望',
     volatility: cv > 10 ? '波動偏高' : cv > 6 ? '波動中等' : '波動中低',
     liquidity: current.length > 80 ? '去化很快' : current.length > 30 ? '去化穩定' : '去化偏慢',
@@ -218,11 +218,11 @@ export function buildRoomLayout(records) {
 }
 
 export function buildPropertyTypeMix(records) {
-  const counts = { 一般成屋: 0, 預售建案: 0 }
+  const counts = { 已經蓋好的房子: 0, 預售屋: 0 }
 
   records.forEach((record) => {
-    if (record.type === 'presale') counts['預售建案'] += 1
-    else counts['一般成屋'] += 1
+    if (record.type === 'presale') counts['預售屋'] += 1
+    else counts['已經蓋好的房子'] += 1
   })
 
   return Object.entries(counts)
