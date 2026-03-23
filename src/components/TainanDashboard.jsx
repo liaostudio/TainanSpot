@@ -1,9 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ResponsiveContainer,
   ComposedChart,
   LineChart,
-  BarChart,
   PieChart,
   Pie,
   Cell,
@@ -25,6 +24,8 @@ import {
   MapPinned,
   ShieldCheck,
   TrendingUp,
+  Upload,
+  Loader2,
 } from 'lucide-react'
 import {
   cityTrendByTab,
@@ -34,7 +35,18 @@ import {
   tainanGrid,
   timeTabs,
 } from '../data/dashboardData.js'
-import { heatColor, summarizeCity, withMovingAverage, formatPrice } from '../utils/dashboard.js'
+import {
+  buildAgeDistribution,
+  buildDistrictOverviews,
+  buildInsights,
+  buildRankings,
+  heatColor,
+  processTrendData,
+  summarizeCity,
+  withMovingAverage,
+  formatPrice,
+} from '../utils/dashboard.js'
+import { useHousingData } from '../hooks/useHousingData.js'
 import { MetricCard } from './MetricCard.jsx'
 import { TrendBadge } from './TrendBadge.jsx'
 import { ChartCard } from './ChartCard.jsx'
@@ -45,18 +57,56 @@ const compareColors = ['#1d4ed8', '#059669', '#d97706', '#dc2626']
 export function TainanDashboard() {
   const [activeTab, setActiveTab] = useState('1y')
   const [selectedDistrict, setSelectedDistrict] = useState('東區')
+  const fileInputRef = useRef(null)
+  const { isProcessing, recordsByDistrict, uploadStats, latestDataDate, isRealMode, loadFiles } = useHousingData()
 
-  const citySummary = useMemo(() => summarizeCity(districtOverviews), [])
-  const cityTrend = useMemo(() => withMovingAverage(cityTrendByTab[activeTab]), [activeTab])
+  const realOverviews = useMemo(
+    () => (isRealMode ? buildDistrictOverviews(recordsByDistrict) : districtOverviews),
+    [isRealMode, recordsByDistrict],
+  )
+  const availableDistricts = useMemo(
+    () => (isRealMode ? realOverviews.map((item) => item.name) : Object.keys(districtTrendMap)),
+    [isRealMode, realOverviews],
+  )
+  const districtRecords = useMemo(
+    () => (isRealMode ? recordsByDistrict.get(selectedDistrict) ?? [] : []),
+    [isRealMode, recordsByDistrict, selectedDistrict],
+  )
+  const citySummary = useMemo(() => summarizeCity(realOverviews), [realOverviews])
+  const cityTrend = useMemo(
+    () => withMovingAverage(isRealMode ? processTrendData(Array.from(recordsByDistrict.values()).flat(), activeTab) : cityTrendByTab[activeTab]),
+    [activeTab, isRealMode, recordsByDistrict],
+  )
   const districtData = districtTrendMap[selectedDistrict] ?? districtTrendMap.東區
   const districtTrend = useMemo(
-    () => withMovingAverage(districtData.trend[activeTab] ?? districtData.trend['1y']),
-    [activeTab, districtData],
+    () =>
+      withMovingAverage(
+        isRealMode ? processTrendData(districtRecords, activeTab) : districtData.trend[activeTab] ?? districtData.trend['1y'],
+      ),
+    [activeTab, districtData, districtRecords, isRealMode],
+  )
+  const ageDistribution = useMemo(
+    () => (isRealMode ? buildAgeDistribution(districtRecords) : districtData.ageDistribution),
+    [districtData.ageDistribution, districtRecords, isRealMode],
+  )
+  const rankings = useMemo(
+    () => (isRealMode ? buildRankings(districtRecords) : districtData.rankings),
+    [districtData.rankings, districtRecords, isRealMode],
+  )
+  const insights = useMemo(
+    () => (isRealMode ? buildInsights(districtRecords) : districtData.aiReport),
+    [districtData.aiReport, districtRecords, isRealMode],
   )
 
-  const pricedDistricts = districtOverviews.map((item) => item.price)
+  const pricedDistricts = realOverviews.map((item) => item.price)
   const minPrice = Math.min(...pricedDistricts)
   const maxPrice = Math.max(...pricedDistricts)
+
+  useEffect(() => {
+    if (availableDistricts.length > 0 && !availableDistricts.includes(selectedDistrict)) {
+      setSelectedDistrict(availableDistricts[0])
+    }
+  }, [availableDistricts, selectedDistrict])
 
   return (
     <div className="dashboard-page">
@@ -83,7 +133,7 @@ export function TainanDashboard() {
               <ShieldCheck className="highlight-icon" />
               <div>
                 <p>目前資料模式</p>
-                <strong>先用展示資料穩定頁面</strong>
+                <strong>{isRealMode ? 'CSV 真實資料模式' : '展示資料模式'}</strong>
               </div>
             </div>
             <div className="highlight-card">
@@ -111,8 +161,8 @@ export function TainanDashboard() {
           />
           <MetricCard
             label="總觀測成交量"
-            value={`${citySummary.volume} 筆`}
-            helper="目前儀表板示意採計的年度樣本量"
+            value={`${citySummary.volume || 0} 筆`}
+            helper={isRealMode ? `CSV 匯入後最新資料至 ${latestDataDate}` : '目前儀表板示意採計的年度樣本量'}
             accent="slate"
           />
           <MetricCard
@@ -123,6 +173,38 @@ export function TainanDashboard() {
           />
         </div>
       </header>
+
+      <section className="panel upload-panel">
+        <div className="panel-head compact">
+          <div>
+            <h3>CSV 匯入與解析</h3>
+            <p>已接回你原本的 CSV 解析邏輯核心：去重、特殊交易排除、純建物單價換算、行政區聚合。</p>
+          </div>
+          <button type="button" className="upload-trigger" onClick={() => fileInputRef.current?.click()}>
+            {isProcessing ? <Loader2 className="spin" size={16} /> : <Upload size={16} />}
+            匯入 CSV
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv"
+            multiple
+            hidden
+            onChange={(event) => {
+              const files = Array.from(event.target.files || [])
+              loadFiles(files)
+              event.target.value = ''
+            }}
+          />
+        </div>
+        <div className="upload-stats">
+          <span className="upload-chip">資料模式：{isRealMode ? '真實資料' : '展示資料'}</span>
+          <span className="upload-chip">讀取總筆數：{uploadStats.totalRaw.toLocaleString()}</span>
+          <span className="upload-chip">排除特殊交易：{uploadStats.totalExcluded.toLocaleString()}</span>
+          <span className="upload-chip">重複紀錄：{uploadStats.duplicateCount.toLocaleString()}</span>
+          <span className="upload-chip">{latestDataDate ? `資料最新至：${latestDataDate}` : '可從 public 放 data_existing.csv / data_presale.csv 自動載入'}</span>
+        </div>
+      </section>
 
       <section className="panel filter-panel">
         <div className="panel-head compact">
@@ -148,7 +230,7 @@ export function TainanDashboard() {
           <label className="district-picker">
             <span>分析行政區</span>
             <select value={selectedDistrict} onChange={(event) => setSelectedDistrict(event.target.value)}>
-              {Object.keys(districtTrendMap).map((district) => (
+              {availableDistricts.map((district) => (
                 <option key={district} value={district}>
                   {district}
                 </option>
@@ -203,7 +285,7 @@ export function TainanDashboard() {
         >
           <div className="heatmap">
             {tainanGrid.map((cell) => {
-              const overview = districtOverviews.find((item) => item.name === cell.id)
+              const overview = realOverviews.find((item) => item.name === cell.id)
               const isSelected = selectedDistrict === cell.id
 
               return (
@@ -213,7 +295,7 @@ export function TainanDashboard() {
                   style={{ gridColumn: cell.c, gridRow: cell.r }}
                   className={`heat-cell ${heatColor(overview?.price, minPrice, maxPrice)} ${isSelected ? 'selected' : ''}`}
                   onClick={() => {
-                    if (districtTrendMap[cell.id]) {
+                    if (availableDistricts.includes(cell.id)) {
                       setSelectedDistrict(cell.id)
                     }
                   }}
@@ -239,26 +321,26 @@ export function TainanDashboard() {
         <div className="metric-grid district-metrics">
           <MetricCard
             label="區域中位數單價"
-            value={`${formatPrice(districtOverviews.find((item) => item.name === selectedDistrict)?.price)} 萬/坪`}
+            value={`${formatPrice(realOverviews.find((item) => item.name === selectedDistrict)?.price)} 萬/坪`}
             helper="保留原本首頁中最常被使用的行政區價格入口"
             accent="blue"
           />
           <MetricCard
             label="區域年增率"
-            value={<TrendBadge value={districtOverviews.find((item) => item.name === selectedDistrict)?.yoy} />}
+            value={<TrendBadge value={realOverviews.find((item) => item.name === selectedDistrict)?.yoy} />}
             helper="方便快速對照現在是不是強勢區域"
             accent="amber"
           />
           <MetricCard
             label="區域成交量"
-            value={`${districtOverviews.find((item) => item.name === selectedDistrict)?.volume ?? '-'} 筆`}
+            value={`${realOverviews.find((item) => item.name === selectedDistrict)?.volume ?? '-'} 筆`}
             helper="先保留排行榜的決策訊號"
             accent="slate"
           />
           <MetricCard
             label="AI 市況判讀"
-            value={districtData.aiReport.health}
-            helper={`${districtData.aiReport.structure} / ${districtData.aiReport.momentum}`}
+            value={insights.health}
+            helper={`${insights.structure} / ${insights.momentum}`}
             accent="green"
           />
         </div>
@@ -310,7 +392,7 @@ export function TainanDashboard() {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={districtData.ageDistribution}
+                    data={ageDistribution}
                     dataKey="volume"
                     nameKey="ageGroup"
                     cx="50%"
@@ -319,7 +401,7 @@ export function TainanDashboard() {
                     outerRadius={95}
                     label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                   >
-                    {districtData.ageDistribution.map((entry, index) => (
+                    {ageDistribution.map((entry, index) => (
                       <Cell key={entry.ageGroup} fill={pieColors[index % pieColors.length]} />
                     ))}
                   </Pie>
@@ -344,27 +426,27 @@ export function TainanDashboard() {
             <div className="insight-grid">
               <article className="insight-card">
                 <Flame className="insight-icon" />
-                <strong>{districtData.aiReport.structure}</strong>
+                <strong>{insights.structure}</strong>
                 <span>市場主力</span>
               </article>
               <article className="insight-card">
                 <TrendingUp className="insight-icon" />
-                <strong>{districtData.aiReport.health}</strong>
+                <strong>{insights.health}</strong>
                 <span>健康度</span>
               </article>
               <article className="insight-card">
                 <Activity className="insight-icon" />
-                <strong>{districtData.aiReport.volatility}</strong>
+                <strong>{insights.volatility}</strong>
                 <span>穩定度</span>
               </article>
               <article className="insight-card">
                 <ShieldCheck className="insight-icon" />
-                <strong>{districtData.aiReport.liquidity}</strong>
+                <strong>{insights.liquidity}</strong>
                 <span>去化速度</span>
               </article>
               <article className="insight-card">
                 <BarChart3 className="insight-icon" />
-                <strong>{districtData.aiReport.momentum}</strong>
+                <strong>{insights.momentum}</strong>
                 <span>近期動能</span>
               </article>
             </div>
@@ -379,7 +461,7 @@ export function TainanDashboard() {
               <Crown className="panel-badge" />
             </div>
             <div className="ranking-list">
-              {districtData.rankings.map((project, index) => (
+              {rankings.map((project, index) => (
                 <div key={project.name} className="ranking-row">
                   <div className="ranking-main">
                     <span className="ranking-index">#{index + 1}</span>

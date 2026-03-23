@@ -128,6 +128,7 @@
 }
 
 .filter-panel,
+.upload-panel,
 .chart-card,
 .ai-panel,
 .rankings-panel {
@@ -154,6 +155,47 @@
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
+}
+
+.upload-panel {
+  margin-bottom: 20px;
+}
+
+.upload-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid rgba(130, 101, 69, 0.16);
+  border-radius: 999px;
+  background: linear-gradient(135deg, #a35f20, #d3892e);
+  color: #fff8ee;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.upload-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.upload-chip {
+  min-height: 34px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: #fffaf3;
+  border: 1px solid rgba(130, 101, 69, 0.14);
+  color: #6b573f;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
 }
 
 .time-tabs {
@@ -423,5 +465,15 @@
 
   .ranking-meta {
     justify-items: start;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
   }
 }
