@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useRef } from 'react'
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -22,43 +22,16 @@ import {
   Building2,
   Crown,
   Flame,
-  Home,
   Layers3,
   Loader2,
   MapPinned,
-  PieChart as PieChartIcon,
   ShieldCheck,
   TrendingUp,
   Upload,
 } from 'lucide-react'
-import {
-  cityTrendByTab,
-  comparisonSeries,
-  districtOverviews,
-  districtTrendMap,
-  tainanGrid,
-  timeTabs,
-} from '../data/dashboardData.js'
-import {
-  buildAgeDistribution,
-  buildComparisonSeries,
-  buildDistrictOverviews,
-  buildInsights,
-  buildPopularLocations,
-  buildProjectDetail,
-  buildPropertyTypeMix,
-  buildRankings,
-  buildRoomLayout,
-  buildVolumeSeries,
-  formatPrice,
-  groupRecordsByDistrict,
-  heatColor,
-  processTrendData,
-  summarizeCity,
-  withMovingAverage,
-  checkBuildingMatch,
-} from '../utils/dashboard.js'
-import { useHousingData } from '../hooks/useHousingData.js'
+import { tainanGrid, timeTabs } from '../data/dashboardData.js'
+import { buildVolumeSeries, formatPrice, heatColor } from '../utils/dashboard.js'
+import { useDashboardModel } from '../hooks/useDashboardModel.js'
 import { MetricCard } from './MetricCard.jsx'
 import { TrendBadge } from './TrendBadge.jsx'
 import { ChartCard } from './ChartCard.jsx'
@@ -77,13 +50,13 @@ function DetailMetric({ label, value, helper }) {
   )
 }
 
-function ProjectDetailView({ detail, onBack }) {
+export function ProjectDetailView({ detail, onBack }) {
   return (
     <div className="project-detail-page">
       <div className="project-back-row">
         <button type="button" className="back-button" onClick={onBack}>
           <ArrowLeft size={16} />
-          返回總覽
+          返回上一頁
         </button>
       </div>
 
@@ -92,7 +65,7 @@ function ProjectDetailView({ detail, onBack }) {
           <div>
             <p className="eyebrow">Project Focus</p>
             <h2>{detail.projectName}</h2>
-            <p className="project-subtitle">你現在可以看到這個社區的價格變化、房子大小，還有最近成交的資料。</p>
+            <p className="project-subtitle">這裡把一個社區最重要的資料整理給你看，先看價格，再看成交，再看細節。</p>
           </div>
           <div className="project-badges">
             <span className="upload-chip">以前成交過 {detail.stats.volume} 筆</span>
@@ -101,25 +74,13 @@ function ProjectDetailView({ detail, onBack }) {
         </div>
 
         <div className="project-metric-grid">
-          <DetailMetric
-            label="平均價格"
-            value={`${formatPrice(detail.stats.medianPrice)} 萬/坪`}
-            helper="這個社區常見的每坪價格"
-          />
-          <DetailMetric
-            label="平均總價"
-            value={`${detail.stats.avgTotalPrice} 萬`}
-            helper="大家大約花多少錢買"
-          />
-          <DetailMetric
-            label="平均建坪"
-            value={`${detail.stats.avgPing} 坪`}
-            helper="房子大約有多大"
-          />
+          <DetailMetric label="平均價格" value={`${formatPrice(detail.stats.medianPrice)} 萬/坪`} helper="這個社區大多數成交的大概價格" />
+          <DetailMetric label="平均總價" value={`${detail.stats.avgTotalPrice} 萬`} helper="大家大約花多少錢買這裡" />
+          <DetailMetric label="平均建坪" value={`${detail.stats.avgPing} 坪`} helper="房子大約有多大" />
           <DetailMetric
             label="最高 / 最低"
             value={`${formatPrice(detail.stats.maxRecord?.unitPricePing)} / ${formatPrice(detail.stats.minRecord?.unitPricePing)}`}
-            helper="最貴和最便宜的差別"
+            helper="最貴和最便宜差多少"
           />
         </div>
       </header>
@@ -143,7 +104,7 @@ function ProjectDetailView({ detail, onBack }) {
           </div>
         </ChartCard>
 
-        <ChartCard title="房型和新屋比例" subtitle="看看大家買的是幾房，還有新屋多不多。">
+        <ChartCard title="房型和新舊比例" subtitle="看看大家買的是幾房，還有預售屋多不多。">
           <div className="stacked-mini-grid">
             <div className="chart-wrap small">
               <ResponsiveContainer width="100%" height="100%">
@@ -229,172 +190,47 @@ function ProjectDetailView({ detail, onBack }) {
   )
 }
 
-export function TainanDashboard() {
-  const [activeTab, setActiveTab] = useState('1y')
-  const [selectedDistrict, setSelectedDistrict] = useState('東區')
-  const [selectedProjectName, setSelectedProjectName] = useState(null)
-  const [selectedLocation, setSelectedLocation] = useState('all')
-  const [propertyTypeFilter, setPropertyTypeFilter] = useState(['existing', 'presale'])
-  const [buildingFilter, setBuildingFilter] = useState(['elevator', 'apartment', 'house', 'store'])
+export function TainanDashboardView({ model, onSelectProject }) {
   const fileInputRef = useRef(null)
-  const { isProcessing, recordsByDistrict, uploadStats, latestDataDate, isRealMode, importMessage, importError, loadFiles } = useHousingData()
+  const {
+    activeTab,
+    setActiveTab,
+    selectedDistrict,
+    setSelectedDistrict,
+    selectedLocation,
+    setSelectedLocation,
+    propertyTypeFilter,
+    buildingFilter,
+    togglePropertyType,
+    toggleBuildingType,
+    isProcessing,
+    uploadStats,
+    latestDataDate,
+    isRealMode,
+    importMessage,
+    importError,
+    loadFiles,
+    availableDistricts,
+    citySummary,
+    cityTrend,
+    cityVolumeTrend,
+    comparisonData,
+    realOverviews,
+    districtRecords,
+    districtTrend,
+    ageDistribution,
+    rankings,
+    insights,
+    roomMix,
+    typeMix,
+    popularLocations,
+    selectedDistrictOverview,
+    minPrice,
+    maxPrice,
+  } = model
 
-  const allRecords = useMemo(
-    () => (isRealMode ? Array.from(recordsByDistrict.values()).flat() : []),
-    [isRealMode, recordsByDistrict],
-  )
-  const filteredAllRecords = useMemo(
-    () =>
-      isRealMode
-        ? allRecords.filter(
-            (record) =>
-              propertyTypeFilter.includes(record.type) && checkBuildingMatch(record, buildingFilter),
-          )
-        : [],
-    [allRecords, buildingFilter, isRealMode, propertyTypeFilter],
-  )
-  const filteredRecordsByDistrict = useMemo(
-    () => (isRealMode ? groupRecordsByDistrict(filteredAllRecords) : new Map()),
-    [filteredAllRecords, isRealMode],
-  )
-  const realOverviews = useMemo(
-    () => (isRealMode ? buildDistrictOverviews(filteredRecordsByDistrict) : districtOverviews),
-    [filteredRecordsByDistrict, isRealMode],
-  )
-  const availableDistricts = useMemo(
-    () => (isRealMode ? realOverviews.map((item) => item.name) : Object.keys(districtTrendMap)),
-    [isRealMode, realOverviews],
-  )
-  const districtData = districtTrendMap[selectedDistrict] ?? districtTrendMap.東區
-  const districtBaseRecords = useMemo(
-    () => (isRealMode ? filteredRecordsByDistrict.get(selectedDistrict) ?? [] : []),
-    [filteredRecordsByDistrict, isRealMode, selectedDistrict],
-  )
-  const popularLocations = useMemo(
-    () => (isRealMode ? buildPopularLocations(districtBaseRecords) : (districtData.rankings || []).map((item) => item.name)),
-    [districtBaseRecords, districtData.rankings, isRealMode],
-  )
-  const districtRecords = useMemo(
-    () =>
-      isRealMode
-        ? districtBaseRecords.filter((record) =>
-            selectedLocation === 'all' ? true : record.locationName === selectedLocation,
-          )
-        : [],
-    [districtBaseRecords, isRealMode, selectedLocation],
-  )
-  const citySummary = useMemo(() => summarizeCity(realOverviews), [realOverviews])
-  const cityTrend = useMemo(
-    () =>
-      withMovingAverage(
-        isRealMode ? processTrendData(filteredAllRecords, activeTab) : cityTrendByTab[activeTab],
-      ),
-    [activeTab, filteredAllRecords, isRealMode],
-  )
-  const cityVolumeTrend = useMemo(
-    () =>
-      isRealMode
-        ? buildVolumeSeries(filteredAllRecords, activeTab)
-        : cityTrendByTab[activeTab].map((item) => ({ period: item.period, volume: item.volume })),
-    [activeTab, filteredAllRecords, isRealMode],
-  )
-  const districtTrend = useMemo(
-    () =>
-      withMovingAverage(
-        isRealMode ? processTrendData(districtRecords, activeTab) : districtData.trend[activeTab] ?? districtData.trend['1y'],
-      ),
-    [activeTab, districtData, districtRecords, isRealMode],
-  )
-  const ageDistribution = useMemo(
-    () => (isRealMode ? buildAgeDistribution(districtRecords) : districtData.ageDistribution),
-    [districtData.ageDistribution, districtRecords, isRealMode],
-  )
-  const rankings = useMemo(
-    () => (isRealMode ? buildRankings(districtBaseRecords) : districtData.rankings),
-    [districtBaseRecords, districtData.rankings, isRealMode],
-  )
-  const insights = useMemo(
-    () => (isRealMode ? buildInsights(districtRecords) : districtData.aiReport),
-    [districtData.aiReport, districtRecords, isRealMode],
-  )
-  const roomMix = useMemo(
-    () => (isRealMode ? buildRoomLayout(districtRecords) : [{ name: '2房', value: 45 }, { name: '3房', value: 33 }, { name: '1房', value: 12 }, { name: '4房以上', value: 10 }]),
-    [districtRecords, isRealMode],
-  )
-  const typeMix = useMemo(
-    () => (isRealMode ? buildPropertyTypeMix(districtRecords) : [{ name: '已經蓋好的房子', value: 65 }, { name: '預售屋', value: 35 }]),
-    [districtRecords, isRealMode],
-  )
-  const comparisonData = useMemo(
-    () =>
-      isRealMode
-        ? buildComparisonSeries(filteredRecordsByDistrict, availableDistricts.slice(0, 4), activeTab)
-        : comparisonSeries,
-    [activeTab, availableDistricts, filteredRecordsByDistrict, isRealMode],
-  )
-  const projectDetail = useMemo(() => {
-    if (!selectedProjectName) return null
-    if (isRealMode) return buildProjectDetail(selectedProjectName, districtBaseRecords)
-
-    const ranking = rankings.find((item) => item.name === selectedProjectName)
-    if (!ranking) return null
-    const mockRecords = Array.from({ length: ranking.volume }).map((_, index) => ({
-      key: `${ranking.name}-${index}`,
-      year: 2025 - Math.floor(index / 6),
-      month: (index % 12) + 1,
-      unitPricePing: Number((ranking.medianPrice + (index % 5) * 0.4 - 0.8).toFixed(2)),
-      totalPrice: (ranking.medianPrice + 5) * 35 * 10000,
-      totalPing: 35 + (index % 3) * 4,
-      roomCount: (index % 4) + 1,
-      level: `${(index % 12) + 2}層`,
-      locationName: ranking.name,
-      projectName: ranking.name,
-      type: ranking.type.includes('還沒蓋好') ? 'presale' : 'existing',
-    }))
-    return buildProjectDetail(ranking.name, mockRecords)
-  }, [districtBaseRecords, isRealMode, rankings, selectedProjectName])
-
-  const pricedDistricts = realOverviews.map((item) => item.price)
-  const minPrice = Math.min(...pricedDistricts)
-  const maxPrice = Math.max(...pricedDistricts)
-
-  useEffect(() => {
-    if (availableDistricts.length > 0 && !availableDistricts.includes(selectedDistrict)) {
-      setSelectedDistrict(availableDistricts[0])
-    }
-  }, [availableDistricts, selectedDistrict])
-
-  useEffect(() => {
-    setSelectedProjectName(null)
-    setSelectedLocation('all')
-  }, [selectedDistrict])
-
-  useEffect(() => {
-    if (selectedLocation !== 'all' && !popularLocations.includes(selectedLocation)) {
-      setSelectedLocation('all')
-    }
-  }, [popularLocations, selectedLocation])
-
-  const togglePropertyType = (type) => {
-    setPropertyTypeFilter((previous) => {
-      const next = previous.includes(type)
-        ? previous.filter((item) => item !== type)
-        : [...previous, type]
-      return next.length === 0 ? previous : next
-    })
-  }
-
-  const toggleBuildingType = (type) => {
-    setBuildingFilter((previous) => {
-      const next = previous.includes(type)
-        ? previous.filter((item) => item !== type)
-        : [...previous, type]
-      return next.length === 0 ? previous : next
-    })
-  }
-
-  if (projectDetail) {
-    return <ProjectDetailView detail={projectDetail} onBack={() => setSelectedProjectName(null)} />
+  const openProject = (projectName) => {
+    if (onSelectProject) onSelectProject(projectName)
   }
 
   return (
@@ -402,11 +238,10 @@ export function TainanDashboard() {
       <header className="dashboard-hero">
         <div className="hero-main">
           <div className="hero-copy">
-            <p className="eyebrow">TainanSpot Housing Intelligence</p>
-            <h1>台南房價深度分析儀表板</h1>
+            <p className="eyebrow">Professional View</p>
+            <h1>專業分析頁</h1>
             <p className="hero-lead">
-              這個頁面可以幫你看台南各區的房價。
-              你可以看哪裡比較貴、哪裡最近比較熱，還可以點進社區看更細的資料。
+              這一頁保留比較完整的圖表、篩選器和 CSV 匯入功能，讓房仲或進階使用者可以更深入看資料。
             </p>
           </div>
 
@@ -414,32 +249,32 @@ export function TainanDashboard() {
             <div className="highlight-card">
               <Building2 className="highlight-icon" />
               <div>
-                <p>這是什麼</p>
-                <strong>看台南房價的網站</strong>
+                <p>目前模式</p>
+                <strong>{isRealMode ? '真實資料分析中' : '展示資料模式'}</strong>
               </div>
             </div>
             <div className="highlight-card">
               <ShieldCheck className="highlight-icon" />
               <div>
-                <p>現在用的資料</p>
-                <strong>{isRealMode ? '你上傳的真實資料' : '展示用範例資料'}</strong>
+                <p>這頁適合誰</p>
+                <strong>房仲、代銷、進階使用者</strong>
               </div>
             </div>
             <div className="highlight-card">
               <Layers3 className="highlight-icon" />
               <div>
-                <p>你可以做什麼</p>
-                <strong>看全市、看行政區、看社區</strong>
+                <p>這裡能做什麼</p>
+                <strong>篩資料、看趨勢、比較行政區</strong>
               </div>
             </div>
           </div>
         </div>
 
         <div className="metric-grid">
-          <MetricCard label="台南平均房價" value={`${formatPrice(citySummary.price)} 萬/坪`} helper="大概可以看成台南常見的價格" accent="blue" />
-          <MetricCard label="最近有沒有變貴" value={<TrendBadge value={citySummary.yoy} />} helper="數字越大，代表漲得越多" accent="amber" />
-          <MetricCard label="總共有幾筆資料" value={`${citySummary.volume || 0} 筆`} helper={isRealMode ? `最新資料到 ${latestDataDate}` : '現在是展示用的範例資料'} accent="slate" />
-          <MetricCard label="現在最貴的區" value={`${citySummary.hottest.name} ${formatPrice(citySummary.hottest.price)}`} helper="目前看起來這一區最貴" accent="green" />
+          <MetricCard label="台南平均價格" value={`${formatPrice(citySummary.price)} 萬/坪`} helper="整體市場大概價格" accent="blue" />
+          <MetricCard label="最近有沒有變貴" value={<TrendBadge value={citySummary.yoy} />} helper="快速看現在是漲還是跌" accent="amber" />
+          <MetricCard label="總共有幾筆資料" value={`${citySummary.volume || 0} 筆`} helper={isRealMode ? `最新資料到 ${latestDataDate}` : '現在是展示用範例資料'} accent="slate" />
+          <MetricCard label="現在最貴的區" value={`${citySummary.hottest.name} ${formatPrice(citySummary.hottest.price)}`} helper="目前看起來最貴的行政區" accent="green" />
         </div>
       </header>
 
@@ -447,7 +282,7 @@ export function TainanDashboard() {
         <div className="panel-head compact">
           <div>
             <h3>CSV 匯入與解析</h3>
-            <p>你可以把房價資料檔丟進來，網站會幫你整理。</p>
+            <p>把房價資料檔丟進來，網站會幫你整理。</p>
           </div>
           <button type="button" className="upload-trigger" onClick={() => fileInputRef.current?.click()}>
             {isProcessing ? <Loader2 className="spin" size={16} /> : <Upload size={16} />}
@@ -481,7 +316,7 @@ export function TainanDashboard() {
         <div className="panel-head compact">
           <div>
             <h3>快速切換</h3>
-            <p>你可以在這裡換時間、換行政區、換房子種類。</p>
+            <p>你可以換時間、換行政區、換房子種類。</p>
           </div>
         </div>
         <div className="filter-row">
@@ -506,7 +341,7 @@ export function TainanDashboard() {
         </div>
         <div className="filter-groups">
           <div className="filter-group">
-            <span className="filter-label">已經蓋好還是還沒蓋好</span>
+            <span className="filter-label">已經蓋好還是預售屋</span>
             <div className="chip-row">
               <button type="button" className={propertyTypeFilter.includes('existing') ? 'chip active' : 'chip'} onClick={() => togglePropertyType('existing')}>
                 已經蓋好的房子
@@ -614,9 +449,9 @@ export function TainanDashboard() {
         </section>
 
         <div className="metric-grid district-metrics">
-          <MetricCard label="這一區的房價" value={`${formatPrice(realOverviews.find((item) => item.name === selectedDistrict)?.price)} 萬/坪`} helper="這一區常見的價格" accent="blue" />
-          <MetricCard label="這一區有沒有變貴" value={<TrendBadge value={realOverviews.find((item) => item.name === selectedDistrict)?.yoy} />} helper="可以快看最近是漲還是跌" accent="amber" />
-          <MetricCard label="這一區賣了幾次" value={`${realOverviews.find((item) => item.name === selectedDistrict)?.volume ?? '-'} 筆`} helper="數字越大，代表資料越多" accent="slate" />
+          <MetricCard label="這一區的房價" value={`${formatPrice(selectedDistrictOverview?.price)} 萬/坪`} helper="這一區常見的價格" accent="blue" />
+          <MetricCard label="這一區有沒有變貴" value={<TrendBadge value={selectedDistrictOverview?.yoy} />} helper="可以快看最近是漲還是跌" accent="amber" />
+          <MetricCard label="這一區成交筆數" value={`${selectedDistrictOverview?.volume ?? '-'} 筆`} helper="數字越大，代表資料越多" accent="slate" />
           <MetricCard label="簡單判斷" value={insights.health} helper={`${insights.structure} / ${insights.momentum}`} accent="green" />
         </div>
 
@@ -631,9 +466,9 @@ export function TainanDashboard() {
                   <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11, fill: '#1d4ed8' }} tickLine={false} axisLine={false} />
                   <Tooltip contentStyle={{ borderRadius: 16, border: '1px solid #eadfce', background: 'rgba(255,252,247,0.98)' }} />
                   <Legend />
-                <Bar yAxisId="left" dataKey="volume" name="成交筆數" fill="#efc27b" radius={[8, 8, 0, 0]} />
-                <Line yAxisId="right" dataKey="price" name="平均價格" type="monotone" stroke="#1d4ed8" strokeWidth={3} dot={{ r: 3 }} />
-                <Line yAxisId="right" dataKey="maPrice" name="平均線" type="monotone" stroke="#059669" strokeWidth={2.5} strokeDasharray="6 5" dot={false} />
+                  <Bar yAxisId="left" dataKey="volume" name="成交筆數" fill="#efc27b" radius={[8, 8, 0, 0]} />
+                  <Line yAxisId="right" dataKey="price" name="平均價格" type="monotone" stroke="#1d4ed8" strokeWidth={3} dot={{ r: 3 }} />
+                  <Line yAxisId="right" dataKey="maPrice" name="平均線" type="monotone" stroke="#059669" strokeWidth={2.5} strokeDasharray="6 5" dot={false} />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -750,7 +585,7 @@ export function TainanDashboard() {
             </div>
             <div className="ranking-list">
               {rankings.map((project, index) => (
-                <button key={project.name} type="button" className="ranking-row ranking-button" onClick={() => setSelectedProjectName(project.name)}>
+                <button key={project.name} type="button" className="ranking-row ranking-button" onClick={() => openProject(project.name)}>
                   <div className="ranking-main">
                     <span className="ranking-index">#{index + 1}</span>
                     <div>
@@ -801,4 +636,9 @@ export function TainanDashboard() {
       </ChartCard>
     </div>
   )
+}
+
+export function TainanDashboard() {
+  const model = useDashboardModel()
+  return <TainanDashboardView model={model} />
 }
