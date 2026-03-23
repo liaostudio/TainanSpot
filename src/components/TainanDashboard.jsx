@@ -44,16 +44,19 @@ import {
   buildComparisonSeries,
   buildDistrictOverviews,
   buildInsights,
+  buildPopularLocations,
   buildProjectDetail,
   buildPropertyTypeMix,
   buildRankings,
   buildRoomLayout,
   buildVolumeSeries,
   formatPrice,
+  groupRecordsByDistrict,
   heatColor,
   processTrendData,
   summarizeCity,
   withMovingAverage,
+  checkBuildingMatch,
 } from '../utils/dashboard.js'
 import { useHousingData } from '../hooks/useHousingData.js'
 import { MetricCard } from './MetricCard.jsx'
@@ -230,35 +233,71 @@ export function TainanDashboard() {
   const [activeTab, setActiveTab] = useState('1y')
   const [selectedDistrict, setSelectedDistrict] = useState('東區')
   const [selectedProjectName, setSelectedProjectName] = useState(null)
+  const [selectedLocation, setSelectedLocation] = useState('all')
+  const [propertyTypeFilter, setPropertyTypeFilter] = useState(['existing', 'presale'])
+  const [buildingFilter, setBuildingFilter] = useState(['elevator', 'apartment', 'house', 'store'])
   const fileInputRef = useRef(null)
-  const { isProcessing, recordsByDistrict, uploadStats, latestDataDate, isRealMode, loadFiles } = useHousingData()
+  const { isProcessing, recordsByDistrict, uploadStats, latestDataDate, isRealMode, importMessage, importError, loadFiles } = useHousingData()
 
-  const realOverviews = useMemo(
-    () => (isRealMode ? buildDistrictOverviews(recordsByDistrict) : districtOverviews),
+  const allRecords = useMemo(
+    () => (isRealMode ? Array.from(recordsByDistrict.values()).flat() : []),
     [isRealMode, recordsByDistrict],
+  )
+  const filteredAllRecords = useMemo(
+    () =>
+      isRealMode
+        ? allRecords.filter(
+            (record) =>
+              propertyTypeFilter.includes(record.type) && checkBuildingMatch(record, buildingFilter),
+          )
+        : [],
+    [allRecords, buildingFilter, isRealMode, propertyTypeFilter],
+  )
+  const filteredRecordsByDistrict = useMemo(
+    () => (isRealMode ? groupRecordsByDistrict(filteredAllRecords) : new Map()),
+    [filteredAllRecords, isRealMode],
+  )
+  const realOverviews = useMemo(
+    () => (isRealMode ? buildDistrictOverviews(filteredRecordsByDistrict) : districtOverviews),
+    [filteredRecordsByDistrict, isRealMode],
   )
   const availableDistricts = useMemo(
     () => (isRealMode ? realOverviews.map((item) => item.name) : Object.keys(districtTrendMap)),
     [isRealMode, realOverviews],
   )
-  const allRecords = useMemo(
-    () => (isRealMode ? Array.from(recordsByDistrict.values()).flat() : []),
-    [isRealMode, recordsByDistrict],
+  const districtData = districtTrendMap[selectedDistrict] ?? districtTrendMap.東區
+  const districtBaseRecords = useMemo(
+    () => (isRealMode ? filteredRecordsByDistrict.get(selectedDistrict) ?? [] : []),
+    [filteredRecordsByDistrict, isRealMode, selectedDistrict],
+  )
+  const popularLocations = useMemo(
+    () => (isRealMode ? buildPopularLocations(districtBaseRecords) : (districtData.rankings || []).map((item) => item.name)),
+    [districtBaseRecords, districtData.rankings, isRealMode],
   )
   const districtRecords = useMemo(
-    () => (isRealMode ? recordsByDistrict.get(selectedDistrict) ?? [] : []),
-    [isRealMode, recordsByDistrict, selectedDistrict],
+    () =>
+      isRealMode
+        ? districtBaseRecords.filter((record) =>
+            selectedLocation === 'all' ? true : record.locationName === selectedLocation,
+          )
+        : [],
+    [districtBaseRecords, isRealMode, selectedLocation],
   )
   const citySummary = useMemo(() => summarizeCity(realOverviews), [realOverviews])
   const cityTrend = useMemo(
-    () => withMovingAverage(isRealMode ? processTrendData(allRecords, activeTab) : cityTrendByTab[activeTab]),
-    [activeTab, allRecords, isRealMode],
+    () =>
+      withMovingAverage(
+        isRealMode ? processTrendData(filteredAllRecords, activeTab) : cityTrendByTab[activeTab],
+      ),
+    [activeTab, filteredAllRecords, isRealMode],
   )
   const cityVolumeTrend = useMemo(
-    () => (isRealMode ? buildVolumeSeries(allRecords, activeTab) : cityTrendByTab[activeTab].map((item) => ({ period: item.period, volume: item.volume }))),
-    [activeTab, allRecords, isRealMode],
+    () =>
+      isRealMode
+        ? buildVolumeSeries(filteredAllRecords, activeTab)
+        : cityTrendByTab[activeTab].map((item) => ({ period: item.period, volume: item.volume })),
+    [activeTab, filteredAllRecords, isRealMode],
   )
-  const districtData = districtTrendMap[selectedDistrict] ?? districtTrendMap.東區
   const districtTrend = useMemo(
     () =>
       withMovingAverage(
@@ -271,8 +310,8 @@ export function TainanDashboard() {
     [districtData.ageDistribution, districtRecords, isRealMode],
   )
   const rankings = useMemo(
-    () => (isRealMode ? buildRankings(districtRecords) : districtData.rankings),
-    [districtData.rankings, districtRecords, isRealMode],
+    () => (isRealMode ? buildRankings(districtBaseRecords) : districtData.rankings),
+    [districtBaseRecords, districtData.rankings, isRealMode],
   )
   const insights = useMemo(
     () => (isRealMode ? buildInsights(districtRecords) : districtData.aiReport),
@@ -289,13 +328,13 @@ export function TainanDashboard() {
   const comparisonData = useMemo(
     () =>
       isRealMode
-        ? buildComparisonSeries(recordsByDistrict, availableDistricts.slice(0, 4), activeTab)
+        ? buildComparisonSeries(filteredRecordsByDistrict, availableDistricts.slice(0, 4), activeTab)
         : comparisonSeries,
-    [activeTab, availableDistricts, isRealMode, recordsByDistrict],
+    [activeTab, availableDistricts, filteredRecordsByDistrict, isRealMode],
   )
   const projectDetail = useMemo(() => {
     if (!selectedProjectName) return null
-    if (isRealMode) return buildProjectDetail(selectedProjectName, districtRecords)
+    if (isRealMode) return buildProjectDetail(selectedProjectName, districtBaseRecords)
 
     const ranking = rankings.find((item) => item.name === selectedProjectName)
     if (!ranking) return null
@@ -313,7 +352,7 @@ export function TainanDashboard() {
       type: ranking.type.includes('預售') ? 'presale' : 'existing',
     }))
     return buildProjectDetail(ranking.name, mockRecords)
-  }, [districtRecords, isRealMode, rankings, selectedProjectName])
+  }, [districtBaseRecords, isRealMode, rankings, selectedProjectName])
 
   const pricedDistricts = realOverviews.map((item) => item.price)
   const minPrice = Math.min(...pricedDistricts)
@@ -327,7 +366,32 @@ export function TainanDashboard() {
 
   useEffect(() => {
     setSelectedProjectName(null)
+    setSelectedLocation('all')
   }, [selectedDistrict])
+
+  useEffect(() => {
+    if (selectedLocation !== 'all' && !popularLocations.includes(selectedLocation)) {
+      setSelectedLocation('all')
+    }
+  }, [popularLocations, selectedLocation])
+
+  const togglePropertyType = (type) => {
+    setPropertyTypeFilter((previous) => {
+      const next = previous.includes(type)
+        ? previous.filter((item) => item !== type)
+        : [...previous, type]
+      return next.length === 0 ? previous : next
+    })
+  }
+
+  const toggleBuildingType = (type) => {
+    setBuildingFilter((previous) => {
+      const next = previous.includes(type)
+        ? previous.filter((item) => item !== type)
+        : [...previous, type]
+      return next.length === 0 ? previous : next
+    })
+  }
 
   if (projectDetail) {
     return <ProjectDetailView detail={projectDetail} onBack={() => setSelectedProjectName(null)} />
@@ -409,6 +473,8 @@ export function TainanDashboard() {
           <span className="upload-chip">重複紀錄：{uploadStats.duplicateCount.toLocaleString()}</span>
           <span className="upload-chip">{latestDataDate ? `資料最新至：${latestDataDate}` : '可從 public 放 data_existing.csv / data_presale.csv 自動載入'}</span>
         </div>
+        {importMessage ? <p className="import-feedback success">{importMessage}</p> : null}
+        {importError ? <p className="import-feedback error">{importError}</p> : null}
       </section>
 
       <section className="panel filter-panel">
@@ -437,6 +503,36 @@ export function TainanDashboard() {
               ))}
             </select>
           </label>
+        </div>
+        <div className="filter-groups">
+          <div className="filter-group">
+            <span className="filter-label">預售 / 成屋</span>
+            <div className="chip-row">
+              <button type="button" className={propertyTypeFilter.includes('existing') ? 'chip active' : 'chip'} onClick={() => togglePropertyType('existing')}>
+                一般成屋
+              </button>
+              <button type="button" className={propertyTypeFilter.includes('presale') ? 'chip active' : 'chip'} onClick={() => togglePropertyType('presale')}>
+                預售建案
+              </button>
+            </div>
+          </div>
+          <div className="filter-group">
+            <span className="filter-label">建物型態</span>
+            <div className="chip-row">
+              <button type="button" className={buildingFilter.includes('elevator') ? 'chip active' : 'chip'} onClick={() => toggleBuildingType('elevator')}>
+                大樓 / 華廈
+              </button>
+              <button type="button" className={buildingFilter.includes('apartment') ? 'chip active' : 'chip'} onClick={() => toggleBuildingType('apartment')}>
+                公寓
+              </button>
+              <button type="button" className={buildingFilter.includes('house') ? 'chip active' : 'chip'} onClick={() => toggleBuildingType('house')}>
+                透天
+              </button>
+              <button type="button" className={buildingFilter.includes('store') ? 'chip active' : 'chip'} onClick={() => toggleBuildingType('store')}>
+                店面 / 商辦
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -492,6 +588,30 @@ export function TainanDashboard() {
             <h2>{selectedDistrict} 深度分析</h2>
           </div>
         </div>
+
+        <section className="panel location-panel">
+          <div className="panel-head compact">
+            <div>
+              <h3>熱門標的切換</h3>
+              <p>把原本區域內的熱門社區 / 門牌切換補回來，讓明細與圖表可聚焦到單一標的。</p>
+            </div>
+          </div>
+          <div className="chip-row">
+            <button type="button" className={selectedLocation === 'all' ? 'chip active' : 'chip'} onClick={() => setSelectedLocation('all')}>
+              全區綜合
+            </button>
+            {popularLocations.slice(0, 8).map((location) => (
+              <button
+                key={location}
+                type="button"
+                className={selectedLocation === location ? 'chip active' : 'chip'}
+                onClick={() => setSelectedLocation(location)}
+              >
+                {location}
+              </button>
+            ))}
+          </div>
+        </section>
 
         <div className="metric-grid district-metrics">
           <MetricCard label="區域中位數單價" value={`${formatPrice(realOverviews.find((item) => item.name === selectedDistrict)?.price)} 萬/坪`} helper="保留原本首頁中最常被使用的行政區價格入口" accent="blue" />

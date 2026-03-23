@@ -157,6 +157,54 @@
   flex-wrap: wrap;
 }
 
+.filter-groups {
+  margin-top: 18px;
+  display: grid;
+  gap: 14px;
+}
+
+.filter-group {
+  display: grid;
+  gap: 10px;
+}
+
+.filter-label {
+  color: #7a6858;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.chip {
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(130, 101, 69, 0.16);
+  background: #fffaf3;
+  color: #6b573f;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.chip.active {
+  background: linear-gradient(135deg, #a35f20, #d3892e);
+  color: #fff8ee;
+  box-shadow: 0 10px 22px rgba(163, 95, 32, 0.18);
+}
+
+.location-panel {
+  border-radius: 28px;
+  padding: 22px;
+  margin-bottom: 18px;
+}
+
 .upload-panel {
   margin-bottom: 20px;
 }
@@ -192,6 +240,26 @@
   color: #6b573f;
   font-size: 13px;
   font-weight: 700;
+}
+
+.import-feedback {
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border-radius: 16px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.import-feedback.success {
+  color: #0f8a62;
+  background: rgba(5, 150, 105, 0.1);
+  border: 1px solid rgba(5, 150, 105, 0.18);
+}
+
+.import-feedback.error {
+  color: #b33d24;
+  background: rgba(188, 59, 36, 0.1);
+  border: 1px solid rgba(188, 59, 36, 0.18);
 }
 
 .spin {

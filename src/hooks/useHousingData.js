@@ -18,6 +18,8 @@ function groupByDistrict(records) {
 export function useHousingData() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [rawTransactions, setRawTransactions] = useState([])
+  const [importMessage, setImportMessage] = useState('')
+  const [importError, setImportError] = useState('')
   const [uploadStats, setUploadStats] = useState({
     totalRaw: 0,
     totalExcluded: 0,
@@ -27,6 +29,8 @@ export function useHousingData() {
   const loadFiles = useCallback(async (files) => {
     if (!files || files.length === 0) return
     setIsProcessing(true)
+    setImportError('')
+    setImportMessage('')
 
     try {
       const nextRecords = []
@@ -34,6 +38,9 @@ export function useHousingData() {
       let totalRaw = uploadStats.totalRaw
       let totalExcluded = uploadStats.totalExcluded
       let duplicateCount = uploadStats.duplicateCount
+      let currentRaw = 0
+      let currentExcluded = 0
+      let currentDuplicate = 0
 
       for (const file of files) {
         const text = 'text' in file ? await file.text() : ''
@@ -47,12 +54,26 @@ export function useHousingData() {
         totalRaw += parsed.totalProcessedRows
         totalExcluded += parsed.filterCount
         duplicateCount += parsed.duplicateCount
+        currentRaw += parsed.totalProcessedRows
+        currentExcluded += parsed.filterCount
+        currentDuplicate += parsed.duplicateCount
       }
+
+      setUploadStats({ totalRaw, totalExcluded, duplicateCount })
 
       if (nextRecords.length > 0) {
         setRawTransactions((previous) => [...previous, ...nextRecords])
-        setUploadStats({ totalRaw, totalExcluded, duplicateCount })
+        setImportMessage(
+          `已匯入 ${files.length} 個檔案，新增 ${nextRecords.length.toLocaleString()} 筆有效資料。處理 ${currentRaw.toLocaleString()} 筆，排除 ${currentExcluded.toLocaleString()} 筆，重複 ${currentDuplicate.toLocaleString()} 筆。`,
+        )
+      } else {
+        setImportMessage(
+          `已讀取 ${files.length} 個檔案，但沒有新增有效資料。共處理 ${currentRaw.toLocaleString()} 筆，排除 ${currentExcluded.toLocaleString()} 筆，重複 ${currentDuplicate.toLocaleString()} 筆。`,
+        )
       }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'CSV 解析失敗'
+      setImportError(`匯入失敗：${message}`)
     } finally {
       setIsProcessing(false)
     }
@@ -91,6 +112,9 @@ export function useHousingData() {
         if (!cancelled && loadedAny) {
           setRawTransactions(allRecords)
           setUploadStats({ totalRaw, totalExcluded, duplicateCount })
+          if (allRecords.length > 0) {
+            setImportMessage(`已自動載入本地資料檔，共 ${allRecords.length.toLocaleString()} 筆有效資料。`)
+          }
         }
       } catch {
         // Keep mock mode when no local CSVs are present.
@@ -129,6 +153,8 @@ export function useHousingData() {
     uploadStats,
     latestDataDate,
     isRealMode: rawTransactions.length > 0,
+    importMessage,
+    importError,
     loadFiles,
   }
 }

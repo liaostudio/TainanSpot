@@ -29,6 +29,32 @@ function sum(values) {
   return values.reduce((total, value) => total + value, 0)
 }
 
+export function groupRecordsByDistrict(records) {
+  const map = new Map()
+  records.forEach((record) => {
+    if (!map.has(record.district)) map.set(record.district, [])
+    map.get(record.district).push(record)
+  })
+  return map
+}
+
+export function checkBuildingMatch(record, buildingFilter) {
+  if (!buildingFilter || buildingFilter.length === 0) return false
+  if (buildingFilter.length >= 4) return true
+
+  const buildType = record.buildType || ''
+  const isElevator = buildType.includes('大樓') || buildType.includes('華廈')
+  const isApartment = buildType.includes('公寓')
+  const isHouse = buildType.includes('透天')
+  const isStore = buildType.includes('店面') || buildType.includes('店鋪') || buildType.includes('商辦')
+
+  if (buildingFilter.includes('elevator') && isElevator) return true
+  if (buildingFilter.includes('apartment') && isApartment) return true
+  if (buildingFilter.includes('house') && isHouse) return true
+  if (buildingFilter.includes('store') && isStore) return true
+  return false
+}
+
 export function summarizeCity(overviews) {
   const totalVolume = overviews.reduce((sum, item) => sum + item.volume, 0)
   const medianLike =
@@ -223,6 +249,20 @@ export function buildComparisonSeries(recordsByDistrict, districtNames, timeFram
   })
 
   return Array.from(periods.values()).sort((a, b) => a.period.localeCompare(b.period))
+}
+
+export function buildPopularLocations(records, limit = 8) {
+  const counts = {}
+  records.forEach((record) => {
+    const key = record.locationName || '其他路段'
+    if (key === '其他路段') return
+    counts[key] = (counts[key] || 0) + 1
+  })
+
+  return Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([name]) => name)
 }
 
 export function buildProjectDetail(projectName, records) {
