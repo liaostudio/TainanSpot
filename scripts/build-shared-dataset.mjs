@@ -79,6 +79,26 @@ function districtFileName(district) {
   return `${encodeURIComponent(district)}.json`
 }
 
+function slimRecord(record) {
+  return {
+    key: record.key,
+    district: record.district,
+    year: record.year,
+    quarter: record.quarter,
+    month: record.month,
+    unitPricePing: record.unitPricePing,
+    type: record.type,
+    buildType: record.buildType,
+    locationName: record.locationName,
+    projectName: record.projectName,
+    age: record.age,
+    roomCount: record.roomCount,
+    totalPing: record.totalPing,
+    level: record.level,
+    totalPrice: record.totalPrice,
+  }
+}
+
 async function main() {
   await ensureDir(outputDir)
   await ensureDir(districtsOutputDir)
@@ -159,15 +179,11 @@ async function main() {
 
     await fs.writeFile(
       path.join(districtsOutputDir, districtFileName(district)),
-      `${JSON.stringify(
-        {
-          district,
-          savedAt: importedAt,
-          records: districtRecords,
-        },
-        null,
-        2,
-      )}\n`,
+      JSON.stringify({
+        district,
+        savedAt: importedAt,
+        records: districtRecords.map(slimRecord),
+      }),
       'utf8',
     )
   }
@@ -185,7 +201,7 @@ async function main() {
     districtMetaByName,
   }
 
-  await fs.writeFile(manifestFile, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8')
+  await fs.writeFile(manifestFile, JSON.stringify(manifest), 'utf8')
 
   console.log(
     `Built manifest with ${records.length} records from ${importedFiles.length} CSV files -> ${path.relative(projectRoot, manifestFile)}`,

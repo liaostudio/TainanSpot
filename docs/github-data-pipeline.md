@@ -26,6 +26,37 @@ npm run build:data
 npm run build
 ```
 
+## 新增新一期 CSV 的固定操作流程
+
+1. 把新的 CSV 檔放進 `data/raw/`
+2. 檔名盡量保持原始期別名稱，不要自己隨便改
+3. 在專案根目錄執行：
+
+```bash
+npm run build:data
+npm run build
+```
+
+4. 確認這幾件事：
+- `public/data/manifest.json` 有更新
+- `public/data/districts/` 的檔案有更新
+- 畫面能正常打開，主要行政區資料有顯示
+
+5. 提交並推上 GitHub：
+
+```bash
+git add .
+git commit -m "Update housing data"
+git push origin main
+```
+
+6. 等 GitHub Pages workflow 跑完
+7. 打開正式網站確認：
+- 最新資料時間有更新
+- 首頁正常載入
+- 行政區頁正常切換
+- 社區頁可以正常打開
+
 ## 注意
 
 - 網站前端現在不直接上傳 CSV 到線上系統

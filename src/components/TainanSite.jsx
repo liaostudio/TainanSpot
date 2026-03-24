@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import {
   ArrowRight,
   BarChart3,
@@ -29,7 +29,13 @@ import { formatPrice } from '../utils/dashboard.js'
 import { MetricCard } from './MetricCard.jsx'
 import { ChartCard } from './ChartCard.jsx'
 import { TrendBadge } from './TrendBadge.jsx'
-import { ProjectDetailView, TainanDashboardView } from './TainanDashboard.jsx'
+
+const LazyDashboardView = lazy(() =>
+  import('./TainanDashboard.jsx').then((module) => ({ default: module.TainanDashboardView })),
+)
+const LazyProjectDetailView = lazy(() =>
+  import('./TainanDashboard.jsx').then((module) => ({ default: module.ProjectDetailView })),
+)
 
 const routeTabs = [
   { id: 'home', label: '首頁', icon: Home },
@@ -563,23 +569,29 @@ export function TainanSite() {
         {route.page === 'home' ? <HomePage model={model} onNavigate={navigate} onOpenProject={openProject} /> : null}
         {route.page === 'district' ? <DistrictPage model={model} onNavigate={navigate} onOpenProject={openProject} /> : null}
         {route.page === 'pro' ? (
-          <TainanDashboardView
-            model={model}
-            onSelectProject={openProject}
-            canManageImports={isAdminAuthenticated}
-            onLogoutImports={handleAdminLogout}
-            loginCard={
-              <AdminLoginCard
-                password={adminPasswordInput}
-                onPasswordChange={setAdminPasswordInput}
-                onSubmit={handleAdminLogin}
-                authError={adminAuthError}
-              />
-            }
-          />
+          <Suspense fallback={<section className="panel"><p>正在載入專業分析頁...</p></section>}>
+            <LazyDashboardView
+              model={model}
+              onSelectProject={openProject}
+              canManageImports={isAdminAuthenticated}
+              onLogoutImports={handleAdminLogout}
+              loginCard={
+                <AdminLoginCard
+                  password={adminPasswordInput}
+                  onPasswordChange={setAdminPasswordInput}
+                  onSubmit={handleAdminLogin}
+                  authError={adminAuthError}
+                />
+              }
+            />
+          </Suspense>
         ) : null}
         {route.page === 'about' ? <AboutPage /> : null}
-        {route.page === 'project' && projectDetail ? <ProjectDetailView detail={projectDetail} onBack={() => navigate('district')} /> : null}
+        {route.page === 'project' && projectDetail ? (
+          <Suspense fallback={<section className="panel"><p>正在載入社區資料...</p></section>}>
+            <LazyProjectDetailView detail={projectDetail} onBack={() => navigate('district')} />
+          </Suspense>
+        ) : null}
       </main>
     </div>
   )
