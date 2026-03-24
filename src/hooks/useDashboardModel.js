@@ -18,6 +18,8 @@ import {
   buildPropertyTypeMix,
   buildRankings,
   buildRoomLayout,
+  buildTradeTargetAnalysis,
+  buildLandDistrictAnalysis,
   buildTotalPriceDistribution,
   buildTotalPriceBand,
   buildUnitPriceDistribution,
@@ -26,11 +28,13 @@ import {
   filterSeriesFromYear,
   filterRecordsByScenario,
   groupRecordsByDistrict,
+  matchesTradeTarget,
+  normalizeTradeTarget,
   processTrendData,
+  recordMatchesBuildingFilter,
   summarizeDistrictRecords,
   summarizeCity,
   withMovingAverage,
-  checkBuildingMatch,
 } from '../utils/dashboard.js'
 import { useHousingData } from './useHousingData.js'
 
@@ -41,6 +45,7 @@ export function useDashboardModel() {
   const [filterDistrict, setFilterDistrict] = useState('all')
   const [selectedLocation, setSelectedLocation] = useState('all')
   const [buyerScenario, setBuyerScenario] = useState('all')
+  const [tradeTargetFilter, setTradeTargetFilter] = useState(['all'])
   const [propertyTypeFilter, setPropertyTypeFilter] = useState(['existing', 'presale'])
   const [buildingFilter, setBuildingFilter] = useState(['elevator', 'apartment', 'house', 'store'])
   const [filterRoomCount, setFilterRoomCount] = useState('all')
@@ -80,6 +85,11 @@ export function useDashboardModel() {
   const comparisonDistricts = useMemo(
     () => (isRealMode ? availableDistricts.slice(0, 4) : ['東區', '永康區', '善化區', '安平區']),
     [availableDistricts, isRealMode],
+  )
+
+  const isLandOnlyMode = useMemo(
+    () => tradeTargetFilter.length === 1 && tradeTargetFilter[0] === '土地',
+    [tradeTargetFilter],
   )
 
   const allLoadedRecords = useMemo(
@@ -125,11 +135,12 @@ export function useDashboardModel() {
       isRealMode
         ? loadedSelectedDistrictRecords.filter(
             (record) =>
-              propertyTypeFilter.includes(record.type) &&
-              checkBuildingMatch(record, buildingFilter),
+              matchesTradeTarget(record, tradeTargetFilter) &&
+              (isLandOnlyMode || propertyTypeFilter.includes(record.type)) &&
+              (isLandOnlyMode || recordMatchesBuildingFilter(record, buildingFilter)),
           )
         : [],
-    [buildingFilter, isRealMode, loadedSelectedDistrictRecords, propertyTypeFilter],
+    [buildingFilter, isLandOnlyMode, isRealMode, loadedSelectedDistrictRecords, propertyTypeFilter, tradeTargetFilter],
   )
 
   const districtRecords = useMemo(
@@ -163,8 +174,9 @@ export function useDashboardModel() {
         const records = recordsByDistrict.get(district) ?? []
         const filtered = records.filter(
           (record) =>
-            propertyTypeFilter.includes(record.type) &&
-            checkBuildingMatch(record, buildingFilter),
+            matchesTradeTarget(record, tradeTargetFilter) &&
+            (isLandOnlyMode || propertyTypeFilter.includes(record.type)) &&
+            (isLandOnlyMode || recordMatchesBuildingFilter(record, buildingFilter)),
         )
 
         if (filtered.length === 0) return null
@@ -177,7 +189,7 @@ export function useDashboardModel() {
       })
       .filter(Boolean)
       .sort((a, b) => b.volume - a.volume)
-  }, [availableDistricts, buildingFilter, isRealMode, propertyTypeFilter, realOverviews, recordsByDistrict])
+  }, [availableDistricts, buildingFilter, isLandOnlyMode, isRealMode, propertyTypeFilter, realOverviews, recordsByDistrict, tradeTargetFilter])
 
   const selectedDistrictOverview = useMemo(
     () =>
@@ -336,8 +348,9 @@ export function useDashboardModel() {
       const records = recordsByDistrict.get(district) ?? []
       const filtered = records.filter(
         (record) =>
-          propertyTypeFilter.includes(record.type) &&
-          checkBuildingMatch(record, buildingFilter),
+          matchesTradeTarget(record, tradeTargetFilter) &&
+          (isLandOnlyMode || propertyTypeFilter.includes(record.type)) &&
+          (isLandOnlyMode || recordMatchesBuildingFilter(record, buildingFilter)),
       )
       if (filtered.length > 0) loadedComparisonMap.set(district, filtered)
     })
@@ -347,7 +360,7 @@ export function useDashboardModel() {
     }
 
     return manifest.comparisonSeriesByTab?.[districtActiveTab] || []
-  }, [buildingFilter, comparisonDistricts, districtActiveTab, isRealMode, manifest.comparisonSeriesByTab, propertyTypeFilter, recordsByDistrict])
+  }, [buildingFilter, comparisonDistricts, districtActiveTab, isLandOnlyMode, isRealMode, manifest.comparisonSeriesByTab, propertyTypeFilter, recordsByDistrict, tradeTargetFilter])
 
   const scenarioDistrictOverview = useMemo(
     () => {
@@ -411,14 +424,84 @@ export function useDashboardModel() {
     const source = allLoadedRecords.length > 0 ? allLoadedRecords : districtBaseRecords
     return source.filter(
       (record) =>
-        propertyTypeFilter.includes(record.type) &&
-        checkBuildingMatch(record, buildingFilter),
+        matchesTradeTarget(record, tradeTargetFilter) &&
+        (isLandOnlyMode || propertyTypeFilter.includes(record.type)) &&
+        (isLandOnlyMode || recordMatchesBuildingFilter(record, buildingFilter)),
     )
-  }, [allLoadedRecords, buildingFilter, districtBaseRecords, isRealMode, propertyTypeFilter])
+  }, [allLoadedRecords, buildingFilter, districtBaseRecords, isLandOnlyMode, isRealMode, propertyTypeFilter, tradeTargetFilter])
 
   const productTypeAnalysisRows = useMemo(
     () => buildProductTypeAnalysis(productAnalysisRecords),
     [productAnalysisRecords],
+  )
+
+  const tradeTargetAnalysisRows = useMemo(
+    () => buildTradeTargetAnalysis(productAnalysisRecords),
+    [productAnalysisRecords],
+  )
+
+  const landAnalysisRecords = useMemo(
+    () => productAnalysisRecords.filter((record) => normalizeTradeTarget(record.tradeTarget) === '土地'),
+    [productAnalysisRecords],
+  )
+
+  const landAnalysisSummary = useMemo(() => {
+    if (landAnalysisRecords.length === 0) {
+      return {
+        volume: 0,
+        medianTotalPrice: 0,
+        medianUnitPrice: 0,
+        avgPing: 0,
+      }
+    }
+
+    const totalPrices = landAnalysisRecords
+      .map((record) => (record.totalPrice > 0 ? record.totalPrice / 10000 : 0))
+      .filter((price) => price > 0)
+    const unitPrices = landAnalysisRecords
+      .map((record) => Number(record.unitPricePing || 0))
+      .filter((price) => price > 0)
+    const pingValues = landAnalysisRecords
+      .map((record) => Number(record.landPing || 0))
+      .filter((ping) => ping > 0)
+
+    const median = (values) => {
+      if (values.length === 0) return 0
+      const sorted = [...values].sort((a, b) => a - b)
+      const middle = Math.floor(sorted.length / 2)
+      return sorted.length % 2 !== 0
+        ? sorted[middle]
+        : (sorted[middle - 1] + sorted[middle]) / 2
+    }
+
+    return {
+      volume: landAnalysisRecords.length,
+      medianTotalPrice: totalPrices.length ? Math.round(median(totalPrices)) : 0,
+      medianUnitPrice: unitPrices.length ? Number(median(unitPrices).toFixed(2)) : 0,
+      avgPing: pingValues.length
+        ? Number((pingValues.reduce((sum, value) => sum + value, 0) / pingValues.length).toFixed(1))
+        : 0,
+    }
+  }, [landAnalysisRecords])
+
+  const landPriceDistribution = useMemo(
+    () => buildTotalPriceDistribution(landAnalysisRecords),
+    [landAnalysisRecords],
+  )
+
+  const landUnitPriceDistribution = useMemo(
+    () => buildUnitPriceDistribution(landAnalysisRecords),
+    [landAnalysisRecords],
+  )
+
+  const landPingDistribution = useMemo(
+    () => buildPingDistribution(landAnalysisRecords),
+    [landAnalysisRecords],
+  )
+
+  const landDistrictRows = useMemo(
+    () => buildLandDistrictAnalysis(landAnalysisRecords),
+    [landAnalysisRecords],
   )
 
   const buildingTypeAnalysisRows = useMemo(
@@ -458,7 +541,7 @@ export function useDashboardModel() {
       .map((record) => Number(record.unitPricePing || 0))
       .filter((price) => price > 0)
     const pings = productAnalysisRecords
-      .map((record) => Number(record.totalPing || 0))
+      .map((record) => Number(record.totalPing || record.landPing || 0))
       .filter((ping) => ping > 0)
 
     return {
@@ -514,8 +597,9 @@ export function useDashboardModel() {
       const source = allLoadedRecords.length > 0 ? allLoadedRecords : districtAllRecords
       return source.filter(
         (record) =>
-          propertyTypeFilter.includes(record.type) &&
-          checkBuildingMatch(record, buildingFilter) &&
+          matchesTradeTarget(record, tradeTargetFilter) &&
+          (isLandOnlyMode || propertyTypeFilter.includes(record.type)) &&
+          (isLandOnlyMode || recordMatchesBuildingFilter(record, buildingFilter)) &&
           (filterDistrict === 'all' ? true : record.district === filterDistrict),
       )
     }
@@ -529,19 +613,21 @@ export function useDashboardModel() {
     filterDistrict,
     isRealMode,
     propertyTypeFilter,
+    tradeTargetFilter,
+    isLandOnlyMode,
   ])
 
   const filterPageRecords = useMemo(() => {
     return filterPageBaseRecords.filter((record) => {
       const matchesRoom =
-        filterRoomCount === 'all'
+        isLandOnlyMode || filterRoomCount === 'all'
           ? true
           : filterRoomCount === '4+'
             ? record.roomCount >= 4
             : record.roomCount === Number(filterRoomCount)
 
       const matchesAge =
-        filterAgeRange === 'all'
+        isLandOnlyMode || filterAgeRange === 'all'
           ? true
           : filterAgeRange === '0-5'
             ? record.age >= 0 && record.age <= 5
@@ -552,13 +638,13 @@ export function useDashboardModel() {
                 : record.age > 30
 
       const matchesParking =
-        filterParking === 'all'
+        isLandOnlyMode || filterParking === 'all'
           ? true
           : filterParking === 'yes'
             ? record.hasPark
             : !record.hasPark
 
-      const pingValue = Number(record.totalPing || 0)
+      const pingValue = Number(record.totalPing || record.landPing || 0)
       const minPing = filterPingMin === '' ? null : Number(filterPingMin)
       const maxPing = filterPingMax === '' ? null : Number(filterPingMax)
       const matchesPing =
@@ -567,7 +653,7 @@ export function useDashboardModel() {
 
       const floorNum = Number(record.floorNum || -999)
       const matchesFloor =
-        filterFloorType === 'all'
+        isLandOnlyMode || filterFloorType === 'all'
           ? true
           : filterFloorType === 'low'
             ? floorNum >= 0 && floorNum <= 5
@@ -588,6 +674,7 @@ export function useDashboardModel() {
     filterPingMin,
     filterRoomCount,
     includeSpecialSamples,
+    isLandOnlyMode,
   ])
 
   const filterPageSummary = useMemo(() => {
@@ -607,7 +694,7 @@ export function useDashboardModel() {
       .map((record) => (record.totalPrice > 0 ? record.totalPrice / 10000 : 0))
       .filter((price) => price > 0)
     const pingValues = filterPageRecords
-      .map((record) => Number(record.totalPing || 0))
+      .map((record) => Number(record.totalPing || record.landPing || 0))
       .filter((ping) => ping > 0)
 
     const median = (values) => {
@@ -645,6 +732,17 @@ export function useDashboardModel() {
         ? previous.filter((item) => item !== type)
         : [...previous, type]
       return next.length === 0 ? previous : next
+    })
+  }
+
+  const toggleTradeTarget = (target) => {
+    setTradeTargetFilter((previous) => {
+      if (target === 'all') return ['all']
+      const withoutAll = previous.filter((item) => item !== 'all')
+      const next = withoutAll.includes(target)
+        ? withoutAll.filter((item) => item !== target)
+        : [...withoutAll, target]
+      return next.length === 0 ? ['all'] : next
     })
   }
 
@@ -705,6 +803,8 @@ export function useDashboardModel() {
     setSelectedLocation,
     buyerScenario,
     setBuyerScenario,
+    tradeTargetFilter,
+    isLandOnlyMode,
     propertyTypeFilter,
     buildingFilter,
     filterRoomCount,
@@ -721,6 +821,7 @@ export function useDashboardModel() {
     setFilterPingMax,
     includeSpecialSamples,
     setIncludeSpecialSamples,
+    toggleTradeTarget,
     togglePropertyType,
     toggleBuildingType,
     isProcessing,
@@ -764,6 +865,12 @@ export function useDashboardModel() {
     districtUnitPriceDistribution,
     districtBuildingTypeMix,
     productAnalysisSummary,
+    tradeTargetAnalysisRows,
+    landAnalysisSummary,
+    landPriceDistribution,
+    landUnitPriceDistribution,
+    landPingDistribution,
+    landDistrictRows,
     productTypeAnalysisRows,
     buildingTypeAnalysisRows,
     productPingDistribution,

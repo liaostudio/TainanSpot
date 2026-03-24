@@ -135,7 +135,7 @@ export function parseCSVText(text, filePropertyType, existingKeysArray = []) {
     const noteRaw = noteIdx !== -1 ? row[noteIdx]?.replace(/['"]/g, '') : ''
     const levelRaw = levelIdx !== -1 ? row[levelIdx]?.replace(/['"]/g, '') : ''
 
-    if (typeRaw && !typeRaw.includes('建物') && !typeRaw.includes('房地')) continue
+    if (typeRaw && !typeRaw.includes('建物') && !typeRaw.includes('房地') && !typeRaw.includes('土地')) continue
 
     const isStoreType =
       buildTypeRaw.includes('店面') || buildTypeRaw.includes('店鋪') || buildTypeRaw.includes('商辦')
@@ -238,6 +238,7 @@ export function parseCSVText(text, filePropertyType, existingKeysArray = []) {
       year,
       quarter,
       month,
+      tradeTarget: typeRaw,
       unitPricePing: Number(unitPricePing.toFixed(2)),
       type: filePropertyType,
       buildType: buildTypeRaw,

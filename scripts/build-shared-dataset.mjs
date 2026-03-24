@@ -86,6 +86,7 @@ function slimRecord(record) {
     year: record.year,
     quarter: record.quarter,
     month: record.month,
+    tradeTarget: record.tradeTarget,
     unitPricePing: record.unitPricePing,
     type: record.type,
     buildType: record.buildType,

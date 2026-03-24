@@ -97,6 +97,26 @@ export function checkBuildingMatch(record, buildingFilter) {
   return false
 }
 
+export function normalizeTradeTarget(rawTarget = '') {
+  const target = String(rawTarget || '')
+  if (target.includes('土地')) return '土地'
+  if (target.includes('房地') && target.includes('車位')) return '房地+車位'
+  if (target.includes('房地')) return '房地'
+  if (target.includes('建物')) return '建物'
+  return target || '其他'
+}
+
+export function matchesTradeTarget(record, tradeTargetFilter) {
+  if (!tradeTargetFilter || tradeTargetFilter.length === 0) return false
+  if (tradeTargetFilter.includes('all')) return true
+  return tradeTargetFilter.includes(normalizeTradeTarget(record.tradeTarget))
+}
+
+export function recordMatchesBuildingFilter(record, buildingFilter) {
+  if (normalizeTradeTarget(record.tradeTarget) === '土地') return true
+  return checkBuildingMatch(record, buildingFilter)
+}
+
 export function summarizeCity(overviews) {
   if (!overviews || overviews.length === 0) {
     return {
@@ -294,6 +314,47 @@ export function buildBuildingTypeMix(records) {
     .filter((item) => item.value > 0)
 }
 
+export function buildTradeTargetAnalysis(records) {
+  const buckets = {
+    土地: [],
+    建物: [],
+    房地: [],
+    '房地+車位': [],
+    其他: [],
+  }
+
+  records.forEach((record) => {
+    const key = normalizeTradeTarget(record.tradeTarget)
+    if (!buckets[key]) buckets[key] = []
+    buckets[key].push(record)
+  })
+
+  return Object.entries(buckets)
+    .map(([name, items]) => ({
+      name,
+      ...summarizeAnalysisGroup(items),
+    }))
+    .filter((item) => item.volume > 0)
+}
+
+export function buildLandDistrictAnalysis(records) {
+  const groups = new Map()
+
+  records.forEach((record) => {
+    if (normalizeTradeTarget(record.tradeTarget) !== '土地') return
+    if (!groups.has(record.district)) groups.set(record.district, [])
+    groups.get(record.district).push(record)
+  })
+
+  return Array.from(groups.entries())
+    .map(([district, items]) => ({
+      district,
+      ...summarizeAnalysisGroup(items),
+    }))
+    .filter((item) => item.volume > 0)
+    .sort((a, b) => b.volume - a.volume)
+}
+
 function getBuildingCategory(buildType = '') {
   if (buildType.includes('大樓') || buildType.includes('華廈')) return '大樓 / 華廈'
   if (buildType.includes('公寓')) return '公寓'
@@ -312,7 +373,7 @@ function summarizeAnalysisGroup(records) {
     .map((record) => Number(record.unitPricePing || 0))
     .filter((price) => price > 0)
   const pings = records
-    .map((record) => Number(record.totalPing || 0))
+    .map((record) => Number(record.totalPing || record.landPing || 0))
     .filter((ping) => ping > 0)
 
   return {
@@ -374,7 +435,7 @@ export function buildPingDistribution(records) {
 
   const counts = new Map(buckets.map((bucket) => [bucket.name, 0]))
   records.forEach((record) => {
-    const ping = Number(record.totalPing || 0)
+    const ping = Number(record.totalPing || record.landPing || 0)
     if (ping <= 0) return
     const bucket = buckets.find((item) => ping >= item.min && ping < item.max)
     if (!bucket) return
