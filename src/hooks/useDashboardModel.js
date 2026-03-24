@@ -28,7 +28,8 @@ import {
 import { useHousingData } from './useHousingData.js'
 
 export function useDashboardModel() {
-  const [activeTab, setActiveTab] = useState('1y')
+  const [cityActiveTab, setCityActiveTab] = useState('1y')
+  const [districtActiveTab, setDistrictActiveTab] = useState('1y')
   const [selectedDistrict, setSelectedDistrict] = useState('東區')
   const [selectedLocation, setSelectedLocation] = useState('all')
   const [buyerScenario, setBuyerScenario] = useState('all')
@@ -176,32 +177,32 @@ export function useDashboardModel() {
   )
 
   const cityTrend = useMemo(
-    () => (isRealMode ? manifest.cityTrendByTab?.[activeTab] || [] : cityTrendByTab[activeTab]),
-    [activeTab, isRealMode, manifest.cityTrendByTab],
+    () => (isRealMode ? manifest.cityTrendByTab?.[cityActiveTab] || [] : cityTrendByTab[cityActiveTab]),
+    [cityActiveTab, isRealMode, manifest.cityTrendByTab],
   )
 
   const cityVolumeTrend = useMemo(
     () =>
       isRealMode
-        ? manifest.cityVolumeTrendByTab?.[activeTab] || []
-        : cityTrendByTab[activeTab].map((item) => ({ period: item.period, volume: item.volume })),
-    [activeTab, isRealMode, manifest.cityVolumeTrendByTab],
+        ? manifest.cityVolumeTrendByTab?.[cityActiveTab] || []
+        : cityTrendByTab[cityActiveTab].map((item) => ({ period: item.period, volume: item.volume })),
+    [cityActiveTab, isRealMode, manifest.cityVolumeTrendByTab],
   )
 
   const districtTrend = useMemo(
     () =>
       districtRecords.length > 0
-        ? withMovingAverage(processTrendData(districtRecords, activeTab))
-        : districtMeta?.trendByTab?.[activeTab] || districtData.trend[activeTab] || districtData.trend['1y'],
-    [activeTab, districtData, districtMeta?.trendByTab, districtRecords],
+        ? withMovingAverage(processTrendData(districtRecords, districtActiveTab))
+        : districtMeta?.trendByTab?.[districtActiveTab] || districtData.trend[districtActiveTab] || districtData.trend['1y'],
+    [districtActiveTab, districtData, districtMeta?.trendByTab, districtRecords],
   )
 
   const scenarioDistrictTrend = useMemo(
     () =>
       scenarioDistrictRecords.length > 0
-        ? withMovingAverage(processTrendData(scenarioDistrictRecords, activeTab))
-        : districtMeta?.trendByTab?.[activeTab] || districtData.trend[activeTab] || districtData.trend['1y'],
-    [activeTab, districtData, districtMeta?.trendByTab, scenarioDistrictRecords],
+        ? withMovingAverage(processTrendData(scenarioDistrictRecords, districtActiveTab))
+        : districtMeta?.trendByTab?.[districtActiveTab] || districtData.trend[districtActiveTab] || districtData.trend['1y'],
+    [districtActiveTab, districtData, districtMeta?.trendByTab, scenarioDistrictRecords],
   )
 
   const ageDistribution = useMemo(
@@ -299,11 +300,11 @@ export function useDashboardModel() {
     })
 
     if (loadedComparisonMap.size === comparisonDistricts.length) {
-      return buildComparisonSeries(loadedComparisonMap, comparisonDistricts, activeTab)
+      return buildComparisonSeries(loadedComparisonMap, comparisonDistricts, districtActiveTab)
     }
 
-    return manifest.comparisonSeriesByTab?.[activeTab] || []
-  }, [activeTab, buildingFilter, comparisonDistricts, isRealMode, manifest.comparisonSeriesByTab, propertyTypeFilter, recordsByDistrict])
+    return manifest.comparisonSeriesByTab?.[districtActiveTab] || []
+  }, [buildingFilter, comparisonDistricts, districtActiveTab, isRealMode, manifest.comparisonSeriesByTab, propertyTypeFilter, recordsByDistrict])
 
   const scenarioDistrictOverview = useMemo(
     () =>
@@ -395,8 +396,10 @@ export function useDashboardModel() {
   }
 
   return {
-    activeTab,
-    setActiveTab,
+    cityActiveTab,
+    setCityActiveTab,
+    districtActiveTab,
+    setDistrictActiveTab,
     selectedDistrict,
     setSelectedDistrict,
     selectedLocation,

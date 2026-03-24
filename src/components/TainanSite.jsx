@@ -163,13 +163,13 @@ function HomePage({ model, onJump }) {
           <p className="eyebrow">City Analysis Desk</p>
           <h1>全市行情分析台</h1>
           <p className="site-hero-lead">
-            這裡先用全市數據回答三件事：台南現在大概多少錢、最近是升溫還是盤整、哪些區和社區最值得先看。
-            看完這一屏，再往下切到行政區和社區分析就很順。
+            這裡先用全市數據回答三件事：台南現在大概多少錢、最近是升溫還是盤整、哪些行政區值得先看。
+            看完這一屏，再往下切到行政區和社區分析會更快進入重點。
           </p>
           <div className="hero-summary-bar">
             <div className="hero-summary-pill">全市價格定位</div>
             <div className="hero-summary-pill">成交熱度變化</div>
-            <div className="hero-summary-pill">行政區與社區排行</div>
+            <div className="hero-summary-pill">行政區價格排行</div>
           </div>
           <div className="cta-row">
             <button type="button" className="cta-primary" onClick={() => onJump('district')}>
@@ -201,7 +201,7 @@ function HomePage({ model, onJump }) {
       </section>
 
       <div className="metric-grid">
-        <MetricCard label="全市平均價格" value={`${formatPrice(model.citySummary.price)} 萬/坪`} helper="先抓台南整體價格基準" accent="blue" />
+        <MetricCard label="全市整體價格" value={`${formatPrice(model.citySummary.price)} 萬/坪`} helper="先抓台南整體價格基準" accent="blue" />
         <MetricCard label="趨勢方向" value={<TrendBadge value={model.citySummary.yoy} />} helper="快速看目前行情是升是降" accent="amber" />
         <MetricCard label="成交筆數" value={`${model.citySummary.volume} 筆`} helper={model.latestDataDate ? `最新資料到 ${model.latestDataDate}` : '目前是展示資料模式'} accent="slate" />
         <MetricCard label="高價區代表" value={model.citySummary.hottest?.name ?? '-'} helper="目前價格最高的行政區" accent="green" />
@@ -209,32 +209,6 @@ function HomePage({ model, onJump }) {
       </div>
 
       <section className="dashboard-grid">
-        <ChartCard title="全市價格趨勢" subtitle="先看整體市場位置，知道台南現在是在往上、往下，還是盤整。">
-          <div className="panel-filter-row">
-            <div className="time-tabs compact">
-              {timeTabs.map((tab) => (
-                <button key={tab.id} type="button" className={tab.id === model.activeTab ? 'is-active' : ''} onClick={() => model.setActiveTab(tab.id)}>
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-            <p className="stat-note">統計方式：依所選時間區間，彙整全市平均價格與成交筆數。</p>
-          </div>
-          <div className="chart-wrap large">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={sampledCityTrend} margin={{ top: 12, right: 16, left: -18, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eadfce" />
-                <XAxis dataKey="period" tick={{ fontSize: 11, fill: '#7c6855' }} tickLine={false} axisLine={false} />
-                <YAxis yAxisId="left" tick={{ fontSize: 11, fill: '#8b6b36' }} tickLine={false} axisLine={false} />
-                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11, fill: '#1d4ed8' }} tickLine={false} axisLine={false} />
-                <Tooltip contentStyle={{ borderRadius: 16, border: '1px solid #eadfce', background: 'rgba(255,252,247,0.98)' }} />
-                <Bar yAxisId="left" dataKey="volume" name="成交筆數" fill="#efc27b" radius={[8, 8, 0, 0]} isAnimationActive={false} />
-                <Line yAxisId="right" dataKey="price" name="平均價格" type="monotone" stroke="#1d4ed8" strokeWidth={3} dot={{ r: 3 }} isAnimationActive={false} />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
-        </ChartCard>
-
         <section className="panel simple-list-panel">
           <div className="panel-head">
             <div>
@@ -252,7 +226,7 @@ function HomePage({ model, onJump }) {
               </button>
             </div>
             <p className="stat-note">
-              統計方式：依最新資料期各行政區{rankingSort === 'price' ? '平均價格' : '成交筆數'}排序。
+              統計方式：依目前篩選條件下最新年度各行政區{rankingSort === 'price' ? '中位數價格' : '成交筆數'}排序。
             </p>
             <p className="stat-note">
               目前已套用：
@@ -285,25 +259,27 @@ function HomePage({ model, onJump }) {
       </section>
 
       <section>
-        <ChartCard title="全市成交熱度趨勢" subtitle="用趨勢線看成交筆數是放大、縮小，還是維持平穩。">
+        <ChartCard title="台南全市價量走勢" subtitle="用一張主圖一起看台南整體中位數價格和成交筆數的變化。">
           <div className="panel-filter-row">
             <div className="time-tabs compact">
               {timeTabs.map((tab) => (
-                <button key={tab.id} type="button" className={tab.id === model.activeTab ? 'is-active' : ''} onClick={() => model.setActiveTab(tab.id)}>
+                <button key={tab.id} type="button" className={tab.id === model.cityActiveTab ? 'is-active' : ''} onClick={() => model.setCityActiveTab(tab.id)}>
                   {tab.label}
                 </button>
               ))}
             </div>
-            <p className="stat-note">統計方式：依所選時間區間，觀察全市成交筆數變化。</p>
+            <p className="stat-note">統計方式：依所選時間區間，彙整全市中位數價格與成交筆數。</p>
           </div>
           <div className="chart-wrap large">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={model.cityVolumeTrend} margin={{ top: 12, right: 16, left: -18, bottom: 0 }}>
+              <ComposedChart data={sampledCityTrend} margin={{ top: 12, right: 16, left: -18, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eadfce" />
                 <XAxis dataKey="period" tick={{ fontSize: 11, fill: '#7c6855' }} tickLine={false} axisLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: '#8b6b36' }} tickLine={false} axisLine={false} />
+                <YAxis yAxisId="left" tick={{ fontSize: 11, fill: '#8b6b36' }} tickLine={false} axisLine={false} />
+                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11, fill: '#1d4ed8' }} tickLine={false} axisLine={false} />
                 <Tooltip contentStyle={{ borderRadius: 16, border: '1px solid #eadfce', background: 'rgba(255,252,247,0.98)' }} />
-                <Line dataKey="volume" name="成交筆數" type="monotone" stroke="#d4a15f" strokeWidth={3} dot={{ r: 3 }} isAnimationActive={false} />
+                <Bar yAxisId="left" dataKey="volume" name="成交筆數" fill="#efc27b" radius={[8, 8, 0, 0]} isAnimationActive={false} />
+                <Line yAxisId="right" dataKey="price" name="中位數價格" type="monotone" stroke="#1d4ed8" strokeWidth={3} dot={{ r: 3 }} isAnimationActive={false} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -325,7 +301,7 @@ function DistrictPage({ model, onJump }) {
           <p className="eyebrow">District Analysis Desk</p>
           <h1>{model.selectedDistrict} 區域行情分析台</h1>
           <p className="site-hero-lead">
-            先看區域價格定位，再看趨勢圖和社區排行。這一段的重點是快速判斷這一區值不值得繼續往下看。
+            先看區域價格定位，再看趨勢圖和房型分布。這一段的重點是快速判斷這一區值不值得繼續往下看。
           </p>
         </div>
         <label className="district-picker">
@@ -341,7 +317,7 @@ function DistrictPage({ model, onJump }) {
       </section>
 
       <div className="metric-grid">
-        <MetricCard label="區域平均價格" value={`${formatPrice(model.scenarioDistrictOverview?.price)} 萬/坪`} helper="先看這區大概價格" accent="blue" />
+        <MetricCard label="區域中位數價格" value={`${formatPrice(model.scenarioDistrictOverview?.price)} 萬/坪`} helper="先看這區常見價格" accent="blue" />
         <MetricCard label="區域趨勢方向" value={<TrendBadge value={model.scenarioDistrictOverview?.yoy} />} helper="快速看最近漲跌" accent="amber" />
         <MetricCard label="近一年平均總價" value={model.districtTotalPriceBand.label} helper="用近一年成交資料算出的平均總價" accent="slate" />
         <MetricCard label="區域成交筆數" value={`${model.scenarioDistrictOverview?.volume ?? '-'} 筆`} helper="筆數越多，代表這區越熱" accent="slate" />
@@ -361,7 +337,7 @@ function DistrictPage({ model, onJump }) {
             <span className="filter-label">時間區間</span>
             <div className="time-tabs compact">
               {timeTabs.map((tab) => (
-                <button key={tab.id} type="button" className={tab.id === model.activeTab ? 'is-active' : ''} onClick={() => model.setActiveTab(tab.id)}>
+                <button key={tab.id} type="button" className={tab.id === model.districtActiveTab ? 'is-active' : ''} onClick={() => model.setDistrictActiveTab(tab.id)}>
                   {tab.label}
                 </button>
               ))}
@@ -401,7 +377,7 @@ function DistrictPage({ model, onJump }) {
       <section className="dashboard-grid">
         <ChartCard title="區域價格趨勢" subtitle="先看這一區最近是變貴、變便宜，還是大致持平。">
           <div className="panel-filter-row">
-            <p className="stat-note">統計方式：依目前篩選條件，按時間區間計算區域平均價格與成交筆數。</p>
+            <p className="stat-note">統計方式：依目前篩選條件，按時間區間計算區域中位數價格與成交筆數。</p>
           </div>
           <div className="chart-wrap large">
             <ResponsiveContainer width="100%" height="100%">
@@ -412,7 +388,7 @@ function DistrictPage({ model, onJump }) {
                 <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11, fill: '#1d4ed8' }} tickLine={false} axisLine={false} />
                 <Tooltip contentStyle={{ borderRadius: 16, border: '1px solid #eadfce', background: 'rgba(255,252,247,0.98)' }} />
                 <Bar yAxisId="left" dataKey="volume" name="成交筆數" fill="#efc27b" radius={[8, 8, 0, 0]} isAnimationActive={false} />
-                <Line yAxisId="right" dataKey="price" name="平均價格" type="monotone" stroke="#1d4ed8" strokeWidth={3} dot={{ r: 3 }} isAnimationActive={false} />
+                <Line yAxisId="right" dataKey="price" name="中位數價格" type="monotone" stroke="#1d4ed8" strokeWidth={3} dot={{ r: 3 }} isAnimationActive={false} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -462,7 +438,7 @@ function AboutPage() {
           <div className="panel-head">
             <div>
               <h3>價格怎麼整理</h3>
-              <p>網站會先整理資料，再算出每一區和每個社區的平均價格、成交筆數和趨勢。</p>
+              <p>網站會先整理資料，再算出每一區和每個社區的中位數價格、成交筆數和趨勢。</p>
             </div>
           </div>
           <div className="info-list">
@@ -570,7 +546,7 @@ export function TainanSite() {
               <div className="panel-head">
                 <div>
                   <h3>社區判價分析台</h3>
-                  <p>從上面的社區排行點一個社區，這裡就會顯示它的價格趨勢、樓層差異和交易明細。</p>
+                  <p>從上面的社區清單點一個社區，這裡就會顯示它的價格趨勢、樓層差異和交易明細。</p>
                 </div>
               </div>
             </section>
