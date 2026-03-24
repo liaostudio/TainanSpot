@@ -136,9 +136,29 @@ export function heatColor(price, minPrice, maxPrice) {
 
 export function processTrendData(records, timeFrame) {
   if (!records || records.length === 0) return []
+  const latestRecord = records.reduce((latest, record) => {
+    const currentValue = (record.year || 0) * 100 + (record.month || 0)
+    const latestValue = (latest.year || 0) * 100 + (latest.month || 0)
+    return currentValue > latestValue ? record : latest
+  }, records[0])
+
+  const latestMonthIndex = (latestRecord.year || 0) * 12 + ((latestRecord.month || 1) - 1)
+  const monthWindow =
+    timeFrame === '1y' ? 12 : timeFrame === '3y' ? 36 : timeFrame === '5y' ? 60 : timeFrame === '10y' ? 120 : null
+
+  const scopedRecords = monthWindow
+    ? records.filter((record) => {
+        const monthIndex = (record.year || 0) * 12 + ((record.month || 1) - 1)
+        const diff = latestMonthIndex - monthIndex
+        return diff >= 0 && diff < monthWindow
+      })
+    : records
+
+  if (scopedRecords.length === 0) return []
+
   const grouped = {}
 
-  records.forEach((record) => {
+  scopedRecords.forEach((record) => {
     let period = ''
     if (timeFrame === '1y') period = `${record.year}-${String(record.month).padStart(2, '0')}`
     else if (timeFrame === '3y' || timeFrame === '5y') period = `${record.year}-Q${record.quarter}`
