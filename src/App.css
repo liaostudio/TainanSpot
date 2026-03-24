@@ -959,6 +959,10 @@
   background: rgba(255, 250, 243, 0.9);
 }
 
+.records-table tr.is-active-row td {
+  background: rgba(255, 245, 220, 0.72);
+}
+
 .sample-flag {
   display: inline-flex;
   align-items: center;
