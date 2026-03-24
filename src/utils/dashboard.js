@@ -379,15 +379,20 @@ export function buildProjectDetail(projectName, records) {
 
   if (projectRecords.length === 0) return null
 
-  const prices = projectRecords.map((record) => record.unitPricePing).filter((price) => price > 0)
-  const totalPrices = projectRecords.map((record) => record.totalPrice).filter((price) => price > 0)
-  const pings = projectRecords.map((record) => record.totalPing).filter((ping) => ping > 0)
+  const residentialRecords = projectRecords.filter(
+    (record) => !(record.buildType || '').match(/店面|店鋪|商辦/),
+  )
+  const analysisRecords = residentialRecords.length > 0 ? residentialRecords : projectRecords
+
+  const prices = analysisRecords.map((record) => record.unitPricePing).filter((price) => price > 0)
+  const totalPrices = analysisRecords.map((record) => record.totalPrice).filter((price) => price > 0)
+  const pings = analysisRecords.map((record) => record.totalPing).filter((ping) => ping > 0)
   const projectMedian = getMedian(prices)
-  const maxRecord = [...projectRecords].sort((a, b) => b.unitPricePing - a.unitPricePing)[0]
-  const minRecord = [...projectRecords].sort((a, b) => a.unitPricePing - b.unitPricePing)[0]
+  const maxRecord = [...analysisRecords].sort((a, b) => b.unitPricePing - a.unitPricePing)[0]
+  const minRecord = [...analysisRecords].sort((a, b) => a.unitPricePing - b.unitPricePing)[0]
 
   const groupedFloors = {}
-  projectRecords.forEach((record) => {
+  analysisRecords.forEach((record) => {
     const levelKey = record.level || '未標示樓層'
     if (!groupedFloors[levelKey]) groupedFloors[levelKey] = []
     groupedFloors[levelKey].push(record)
@@ -404,13 +409,13 @@ export function buildProjectDetail(projectName, records) {
     }))
     .sort((a, b) => b.volume - a.volume)
 
-  const trend = withMovingAverage(processTrendData(projectRecords, '1y'))
-  const roomMix = buildRoomLayout(projectRecords)
-  const typeMix = buildPropertyTypeMix(projectRecords)
+  const trend = withMovingAverage(processTrendData(analysisRecords, '1y'))
+  const roomMix = buildRoomLayout(analysisRecords)
+  const typeMix = buildPropertyTypeMix(analysisRecords)
 
   return {
     projectName,
-    records: [...projectRecords].reverse(),
+    records: [...analysisRecords].reverse(),
     trend,
     roomMix,
     typeMix,
@@ -419,7 +424,7 @@ export function buildProjectDetail(projectName, records) {
       medianPrice: Number(projectMedian.toFixed(2)),
       avgTotalPrice: totalPrices.length ? Math.round(sum(totalPrices) / totalPrices.length / 10000) : 0,
       avgPing: pings.length ? Number((sum(pings) / pings.length).toFixed(1)) : 0,
-      volume: projectRecords.length,
+      volume: analysisRecords.length,
       maxRecord,
       minRecord,
     },

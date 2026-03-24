@@ -85,6 +85,11 @@ export function useDashboardModel() {
     [recordsByDistrict, selectedDistrict],
   )
 
+  const districtAllRecords = useMemo(
+    () => (isRealMode ? loadedSelectedDistrictRecords : []),
+    [isRealMode, loadedSelectedDistrictRecords],
+  )
+
   const districtBaseRecords = useMemo(
     () =>
       isRealMode
@@ -351,7 +356,7 @@ export function useDashboardModel() {
 
   const getProjectDetail = (projectName) => {
     if (!projectName) return null
-    if (districtBaseRecords.length > 0) return buildProjectDetail(projectName, districtBaseRecords)
+    if (districtAllRecords.length > 0) return buildProjectDetail(projectName, districtAllRecords)
 
     const ranking = rankings.find((item) => item.name === projectName)
     if (!ranking) return null
@@ -411,6 +416,7 @@ export function useDashboardModel() {
     realOverviews,
     districtRecords,
     districtBaseRecords,
+    districtAllRecords,
     districtTrend,
     scenarioDistrictTrend,
     ageDistribution,
