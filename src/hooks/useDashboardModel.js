@@ -32,6 +32,7 @@ import {
   normalizeTradeTarget,
   processTrendData,
   recordMatchesBuildingFilter,
+  scopeRecordsByTimeFrame,
   summarizeDistrictRecords,
   summarizeCity,
   withMovingAverage,
@@ -191,6 +192,19 @@ export function useDashboardModel() {
       .sort((a, b) => b.volume - a.volume)
   }, [availableDistricts, buildingFilter, isLandOnlyMode, isRealMode, propertyTypeFilter, realOverviews, recordsByDistrict, tradeTargetFilter])
 
+  const filteredCityRecords = useMemo(
+    () =>
+      isRealMode
+        ? allLoadedRecords.filter(
+            (record) =>
+              matchesTradeTarget(record, tradeTargetFilter) &&
+              (isLandOnlyMode || propertyTypeFilter.includes(record.type)) &&
+              (isLandOnlyMode || recordMatchesBuildingFilter(record, buildingFilter)),
+          )
+        : [],
+    [allLoadedRecords, buildingFilter, isLandOnlyMode, isRealMode, propertyTypeFilter, tradeTargetFilter],
+  )
+
   const selectedDistrictOverview = useMemo(
     () =>
       filteredRealOverviews.find((item) => item.name === selectedDistrict) ??
@@ -208,8 +222,23 @@ export function useDashboardModel() {
   )
 
   const citySummary = useMemo(
-    () => (isRealMode ? summarizeCity(filteredRealOverviews) : summarizeCity(realOverviews)),
-    [filteredRealOverviews, isRealMode, realOverviews],
+    () => {
+      if (!isRealMode) return summarizeCity(realOverviews)
+
+      if (filteredCityRecords.length === 0) return summarizeCity(filteredRealOverviews)
+
+      const cityStats = summarizeDistrictRecords(filteredCityRecords)
+      const sortedDistricts = [...filteredRealOverviews].sort((a, b) => b.price - a.price)
+
+      return {
+        price: cityStats.price,
+        yoy: cityStats.yoy,
+        volume: cityStats.volume,
+        hottest: sortedDistricts[0] || { name: '-' },
+        mostAffordable: sortedDistricts[sortedDistricts.length - 1] || { name: '-' },
+      }
+    },
+    [filteredCityRecords, filteredRealOverviews, isRealMode, realOverviews],
   )
 
   const cityTrend = useMemo(
@@ -543,11 +572,19 @@ export function useDashboardModel() {
     const pings = productAnalysisRecords
       .map((record) => Number(record.totalPing || record.landPing || 0))
       .filter((ping) => ping > 0)
+    const median = (values) => {
+      if (values.length === 0) return 0
+      const sorted = [...values].sort((a, b) => a - b)
+      const middle = Math.floor(sorted.length / 2)
+      return sorted.length % 2 !== 0
+        ? sorted[middle]
+        : (sorted[middle - 1] + sorted[middle]) / 2
+    }
 
     return {
       volume: productAnalysisRecords.length,
-      medianTotalPrice: totalPrices.length ? Math.round(totalPrices.sort((a, b) => a - b)[Math.floor(totalPrices.length / 2)]) : 0,
-      medianUnitPrice: unitPrices.length ? Number(unitPrices.sort((a, b) => a - b)[Math.floor(unitPrices.length / 2)].toFixed(2)) : 0,
+      medianTotalPrice: totalPrices.length ? Math.round(median(totalPrices)) : 0,
+      medianUnitPrice: unitPrices.length ? Number(median(unitPrices).toFixed(2)) : 0,
       avgPing: pings.length ? Number((pings.reduce((sum, ping) => sum + ping, 0) / pings.length).toFixed(1)) : 0,
     }
   }, [productAnalysisRecords])
@@ -596,7 +633,7 @@ export function useDashboardModel() {
   const filterPageBaseRecords = useMemo(() => {
     if (isRealMode) {
       const source = allLoadedRecords.length > 0 ? allLoadedRecords : districtAllRecords
-      return source.filter(
+      return scopeRecordsByTimeFrame(source, districtActiveTab).filter(
         (record) =>
           matchesTradeTarget(record, tradeTargetFilter) &&
           (isLandOnlyMode || propertyTypeFilter.includes(record.type)) &&
@@ -605,10 +642,11 @@ export function useDashboardModel() {
       )
     }
 
-    return districtRecords
+    return scopeRecordsByTimeFrame(districtRecords, districtActiveTab)
   }, [
     allLoadedRecords,
     buildingFilter,
+    districtActiveTab,
     districtAllRecords,
     districtRecords,
     filterDistrict,

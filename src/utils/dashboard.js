@@ -197,6 +197,28 @@ export function processTrendData(records, timeFrame) {
     }))
 }
 
+export function scopeRecordsByTimeFrame(records, timeFrame) {
+  if (!Array.isArray(records) || records.length === 0) return []
+
+  const latestRecord = records.reduce((latest, record) => {
+    const currentValue = (record.year || 0) * 100 + (record.month || 0)
+    const latestValue = (latest.year || 0) * 100 + (latest.month || 0)
+    return currentValue > latestValue ? record : latest
+  }, records[0])
+
+  const latestMonthIndex = (latestRecord.year || 0) * 12 + ((latestRecord.month || 1) - 1)
+  const monthWindow =
+    timeFrame === '1y' ? 12 : timeFrame === '3y' ? 36 : timeFrame === '5y' ? 60 : timeFrame === '10y' ? 120 : null
+
+  if (!monthWindow) return records
+
+  return records.filter((record) => {
+    const monthIndex = (record.year || 0) * 12 + ((record.month || 1) - 1)
+    const diff = latestMonthIndex - monthIndex
+    return diff >= 0 && diff < monthWindow
+  })
+}
+
 export function buildDistrictOverviews(recordsByDistrict) {
   return Array.from(recordsByDistrict.entries())
     .map(([district, records]) => {

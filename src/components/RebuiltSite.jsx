@@ -40,6 +40,13 @@ function scrollToSection(id) {
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
+function getTimeRangeLabel(timeTab) {
+  if (timeTab === '1y') return '1 年'
+  if (timeTab === '3y') return '3 年'
+  if (timeTab === '5y') return '5 年'
+  return '10 年'
+}
+
 function SiteHeader() {
   return (
     <header className="rebuild-header">
@@ -80,6 +87,7 @@ function SectionIntro({ eyebrow, title, description, actions }) {
 function ModuleEntryCard({ title, text, onClick }) {
   return (
     <button type="button" className="module-entry-card" onClick={onClick}>
+      <small>分析模組</small>
       <strong>{title}</strong>
       <p>{text}</p>
       <span>進入</span>
@@ -89,6 +97,23 @@ function ModuleEntryCard({ title, text, onClick }) {
 
 function HomeSection({ model }) {
   const quickDistricts = model.availableDistricts.slice(0, 8)
+  const homeStats = [
+    {
+      label: '目前資料',
+      value: model.latestDataDate || '-',
+      helper: model.isRealMode ? '依已匯入成交資料分析' : '目前為展示資料模式',
+    },
+    {
+      label: '全市單價中位數',
+      value: model.citySummary?.price ? `${formatPrice(model.citySummary.price)} 萬/坪` : '-',
+      helper: '依最新年度全市成交樣本統計',
+    },
+    {
+      label: '成交件數',
+      value: model.citySummary?.volume ? `${model.citySummary.volume.toLocaleString()} 筆` : '-',
+      helper: '依最新年度全市成交樣本統計',
+    },
+  ]
 
   return (
     <div className="rebuild-stack">
@@ -109,6 +134,15 @@ function HomeSection({ model }) {
             <button type="button" className="rebuild-secondary-btn" onClick={() => scrollToSection('regional')}>
               先看區域總覽
             </button>
+          </div>
+          <div className="hero-quick-stats">
+            {homeStats.map((item) => (
+              <article key={item.label} className="hero-quick-stat">
+                <span>{item.label}</span>
+                <strong>{item.value}</strong>
+                <p>{item.helper}</p>
+              </article>
+            ))}
           </div>
         </div>
         <div className="rebuild-hero-side">
@@ -187,7 +221,7 @@ function RegionalSection({ model }) {
       <SectionIntro
         eyebrow="區域總覽"
         title="先看各區比較，再進單區分析"
-        description="先比較台南各行政區成交件數、中位數總價與中位數價格，再切到單一行政區看分布與趨勢。"
+        description="先比較台南各行政區成交件數、中位數總價與單價中位數，再切到單一行政區看分布與趨勢。"
         actions={
           <label className="rebuild-inline-select">
             <span>目前行政區</span>
@@ -240,7 +274,7 @@ function RegionalSection({ model }) {
 
       <ChartCard
         title="行政區價格熱圖"
-        subtitle="依目前篩選條件下各行政區的中位數價格著色。點行政區可切換單區分析。"
+        subtitle="依目前篩選條件下各行政區最新年度的單價中位數著色。點行政區可切換單區分析。"
       >
         <div className="heatmap">
           {tainanGrid.map((cell) => {
@@ -263,7 +297,7 @@ function RegionalSection({ model }) {
       </ChartCard>
 
       <section className="rebuild-grid-2">
-        <ChartCard title="各區中位數總價比較" subtitle="先看主流成交總價高低，建立跨區總價輪廓。">
+        <ChartCard title="各區中位數總價比較" subtitle="依目前條件下最新年度成交樣本，比較各區主流成交總價。">
           <div className="chart-wrap medium">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={totalPriceChartRows} layout="vertical" margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
@@ -277,14 +311,14 @@ function RegionalSection({ model }) {
           </div>
         </ChartCard>
 
-        <ChartCard title="各區中位數單價比較" subtitle="再看各區常見單價位置，建立跨區單價輪廓。">
+        <ChartCard title="各區單價中位數比較" subtitle="依目前條件下最新年度成交樣本，比較各區常見單價位置。">
           <div className="chart-wrap medium">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={unitPriceChartRows} layout="vertical" margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e7e0d6" />
                 <XAxis type="number" tickLine={false} axisLine={false} />
                 <YAxis dataKey="district" type="category" width={64} tickLine={false} axisLine={false} />
-                <Tooltip formatter={(value) => [`${formatPrice(value)} 萬/坪`, '中位數價格']} />
+                <Tooltip formatter={(value) => [`${formatPrice(value)} 萬/坪`, '單價中位數']} />
                 <Bar dataKey="price" fill="#2155c8" radius={[0, 8, 8, 0]} isAnimationActive={false} />
               </BarChart>
             </ResponsiveContainer>
@@ -296,7 +330,7 @@ function RegionalSection({ model }) {
         <div className="panel-head">
           <div>
             <h3>各區成交概況</h3>
-            <p>這一張表先回答哪些區成交比較多、總價大約在哪裡、單價位置在哪裡。</p>
+            <p>這一張表依目前條件下最新年度成交樣本，先回答哪些區成交比較多、總價大約在哪裡、單價位置在哪裡。</p>
           </div>
         </div>
         <div className="table-shell">
@@ -306,7 +340,7 @@ function RegionalSection({ model }) {
                 <th>行政區</th>
                 <th>成交件數</th>
                 <th>中位數總價</th>
-                <th>中位數價格</th>
+                <th>單價中位數</th>
                 <th>趨勢方向</th>
               </tr>
             </thead>
@@ -330,9 +364,9 @@ function RegionalSection({ model }) {
       </section>
 
       <div className="metric-grid">
-        <MetricCard label="區域成交件數" value={`${model.scenarioDistrictOverview?.volume ?? '-'} 筆`} helper="目前行政區的成交樣本數" accent="blue" showHint={false} />
-        <MetricCard label="區域中位數價格" value={`${formatPrice(model.scenarioDistrictOverview?.price)} 萬/坪`} helper="目前行政區的常見單價" accent="amber" showHint={false} />
-        <MetricCard label="近一年平均總價" value={model.districtTotalPriceBand.label} helper="近 12 個月成交資料" accent="slate" showHint={false} />
+        <MetricCard label="區域成交件數" value={`${model.scenarioDistrictOverview?.volume ?? '-'} 筆`} helper="依目前條件下最新年度成交樣本統計" accent="blue" showHint={false} />
+        <MetricCard label="區域單價中位數" value={`${formatPrice(model.scenarioDistrictOverview?.price)} 萬/坪`} helper="依目前條件下最新年度成交樣本統計" accent="amber" showHint={false} />
+        <MetricCard label="近一年平均總價" value={model.districtTotalPriceBand.label} helper="依最近 12 個月成交資料統計" accent="slate" showHint={false} />
         <MetricCard label="主力房型" value={model.scenarioRoomMix[0]?.name ?? '-'} helper="目前行政區成交最多的房型" accent="green" showHint={false} />
       </div>
 
@@ -342,7 +376,7 @@ function RegionalSection({ model }) {
         <DataBreakdownCard title="建物型態概況" subtitle="看所選行政區目前成交樣本主要是哪種建物型態。" items={model.districtBuildingTypeMix.map((item) => ({ name: item.name, value: `${item.value} 筆` }))} />
       </section>
 
-      <ChartCard title={<><span>區域價格趨勢</span><SampleStatusTag includeSpecialSamples={model.includeSpecialSamples} /></>} subtitle="依時間區間計算該區中位數價格與成交筆數。">
+      <ChartCard title={<><span>區域價格趨勢</span><SampleStatusTag includeSpecialSamples={model.includeSpecialSamples} /></>} subtitle="依時間區間計算該區的單價中位數與成交件數。">
         <div className="chart-wrap large">
           {model.scenarioDistrictTrend.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
@@ -374,7 +408,7 @@ function ProductSection({ model, productSubview, setProductSubview }) {
       <SectionIntro
         eyebrow="產品類型分析"
         title="先分開產品，再比較價格"
-        description="先選土地交易分析或建物 / 房地分析，再看分布、再看中位數與比較表。"
+        description="先選土地交易分析或建物 / 房地分析，再看分布、再看中位數與比較表。除特別註明外，以下統計皆依目前條件下全期間成交樣本計算。"
       />
 
       <section className="panel">
@@ -451,17 +485,17 @@ function ProductSection({ model, productSubview, setProductSubview }) {
           </section>
 
           <div className="metric-grid">
-            <MetricCard label="土地成交件數" value={`${model.landAnalysisSummary.volume.toLocaleString()} 筆`} helper="目前條件下土地成交樣本數" accent="blue" showHint={false} />
-            <MetricCard label="土地總價中位數" value={model.landAnalysisSummary.medianTotalPrice > 0 ? `${model.landAnalysisSummary.medianTotalPrice} 萬` : '-'} helper="土地總價中位數" accent="amber" showHint={false} />
-            <MetricCard label="土地單價中位數" value={model.landAnalysisSummary.medianUnitPrice > 0 ? `${formatPrice(model.landAnalysisSummary.medianUnitPrice)} 萬/坪` : '-'} helper="土地單價中位數" accent="slate" showHint={false} />
-            <MetricCard label="平均土地坪數" value={model.landAnalysisSummary.avgPing > 0 ? `${model.landAnalysisSummary.avgPing} 坪` : '-'} helper="土地平均坪數" accent="green" showHint={false} />
+            <MetricCard label="土地成交件數" value={`${model.landAnalysisSummary.volume.toLocaleString()} 筆`} helper="依目前條件下全期間土地成交樣本統計" accent="blue" showHint={false} />
+            <MetricCard label="土地總價中位數" value={model.landAnalysisSummary.medianTotalPrice > 0 ? `${model.landAnalysisSummary.medianTotalPrice} 萬` : '-'} helper="依目前條件下全期間土地成交樣本統計" accent="amber" showHint={false} />
+            <MetricCard label="土地單價中位數" value={model.landAnalysisSummary.medianUnitPrice > 0 ? `${formatPrice(model.landAnalysisSummary.medianUnitPrice)} 萬/坪` : '-'} helper="依目前條件下全期間土地成交樣本統計" accent="slate" showHint={false} />
+            <MetricCard label="平均土地坪數" value={model.landAnalysisSummary.avgPing > 0 ? `${model.landAnalysisSummary.avgPing} 坪` : '-'} helper="依目前條件下全期間土地成交樣本統計" accent="green" showHint={false} />
           </div>
 
-          <section className="panel">
-            <div className="panel-head">
-              <div>
-                <h3>各行政區土地比較</h3>
-                <p>分布看完之後，再回來比較各區土地成交位置。</p>
+      <section className="panel">
+        <div className="panel-head">
+          <div>
+            <h3>各行政區土地比較</h3>
+            <p>分布看完之後，再回來比較各區土地成交位置。</p>
               </div>
             </div>
             <div className="table-shell">
@@ -499,10 +533,10 @@ function ProductSection({ model, productSubview, setProductSubview }) {
           </section>
 
           <div className="metric-grid">
-            <MetricCard label="樣本件數" value={`${model.productAnalysisSummary.volume.toLocaleString()} 筆`} helper="目前分析樣本數" accent="blue" showHint={false} />
-            <MetricCard label="總價中位數" value={model.productAnalysisSummary.medianTotalPrice > 0 ? `${model.productAnalysisSummary.medianTotalPrice} 萬` : '-'} helper="總價中位數" accent="amber" showHint={false} />
-            <MetricCard label="單價中位數" value={model.productAnalysisSummary.medianUnitPrice > 0 ? `${formatPrice(model.productAnalysisSummary.medianUnitPrice)} 萬/坪` : '-'} helper="單價中位數" accent="slate" showHint={false} />
-            <MetricCard label="平均建坪" value={model.productAnalysisSummary.avgPing > 0 ? `${model.productAnalysisSummary.avgPing} 坪` : '-'} helper="平均建坪" accent="green" showHint={false} />
+            <MetricCard label="成交件數" value={`${model.productAnalysisSummary.volume.toLocaleString()} 筆`} helper="依目前條件下全期間成交樣本統計" accent="blue" showHint={false} />
+            <MetricCard label="總價中位數" value={model.productAnalysisSummary.medianTotalPrice > 0 ? `${model.productAnalysisSummary.medianTotalPrice} 萬` : '-'} helper="依目前條件下全期間成交樣本統計" accent="amber" showHint={false} />
+            <MetricCard label="單價中位數" value={model.productAnalysisSummary.medianUnitPrice > 0 ? `${formatPrice(model.productAnalysisSummary.medianUnitPrice)} 萬/坪` : '-'} helper="依目前條件下全期間成交樣本統計" accent="slate" showHint={false} />
+            <MetricCard label="平均建坪" value={model.productAnalysisSummary.avgPing > 0 ? `${model.productAnalysisSummary.avgPing} 坪` : '-'} helper="依目前條件下全期間成交樣本統計" accent="green" showHint={false} />
           </div>
 
           <section className="rebuild-grid-3">
@@ -542,13 +576,14 @@ function ProductSection({ model, productSubview, setProductSubview }) {
 
 function FilterSection({ model, onOpenRecord, activeRecordKey }) {
   const specialCount = model.filterPageRecords.filter((record) => record.isSpecialSample).length
+  const filterTimeLabel = getTimeRangeLabel(model.districtActiveTab)
 
   return (
     <div className="rebuild-stack">
       <SectionIntro
         eyebrow="條件篩選"
         title="把成交資料縮小到接近需求的樣本"
-        description="用區域、交易標的、產品類型、建物型態、坪數、屋齡、樓層與車位條件，找到更接近需求的成交資料。"
+        description="用區域、交易標的、產品類型、建物型態、坪數、屋齡、樓層與車位條件，找到更接近需求的成交資料。總價分布、單價分布與摘要卡都會跟時間區間一起更新。"
       />
 
       <section className="panel">
@@ -700,10 +735,10 @@ function FilterSection({ model, onOpenRecord, activeRecordKey }) {
       </section>
 
       <div className="metric-grid">
-        <MetricCard label="篩選後件數" value={`${model.filterPageSummary.volume.toLocaleString()} 筆`} helper="篩選後的成交樣本數" accent="blue" showHint={false} />
-        <MetricCard label="總價中位數" value={model.filterPageSummary.medianTotalPrice > 0 ? `${model.filterPageSummary.medianTotalPrice} 萬` : '-'} helper="篩選後總價中位數" accent="amber" showHint={false} />
-        <MetricCard label="單價中位數" value={model.filterPageSummary.medianPrice > 0 ? `${formatPrice(model.filterPageSummary.medianPrice)} 萬/坪` : '-'} helper="篩選後單價中位數" accent="slate" showHint={false} />
-        <MetricCard label={model.isLandOnlyMode ? '平均土地坪數' : '平均建坪'} value={model.filterPageSummary.avgPing > 0 ? `${model.filterPageSummary.avgPing} 坪` : '-'} helper="篩選後平均面積" accent="green" showHint={false} />
+        <MetricCard label="篩選後件數" value={`${model.filterPageSummary.volume.toLocaleString()} 筆`} helper={`依目前篩選條件與 ${filterTimeLabel} 時間區間統計`} accent="blue" showHint={false} />
+        <MetricCard label="總價中位數" value={model.filterPageSummary.medianTotalPrice > 0 ? `${model.filterPageSummary.medianTotalPrice} 萬` : '-'} helper={`依目前篩選條件與 ${filterTimeLabel} 時間區間統計`} accent="amber" showHint={false} />
+        <MetricCard label="單價中位數" value={model.filterPageSummary.medianPrice > 0 ? `${formatPrice(model.filterPageSummary.medianPrice)} 萬/坪` : '-'} helper={`依目前篩選條件與 ${filterTimeLabel} 時間區間統計`} accent="slate" showHint={false} />
+        <MetricCard label={model.isLandOnlyMode ? '平均土地坪數' : '平均建坪'} value={model.filterPageSummary.avgPing > 0 ? `${model.filterPageSummary.avgPing} 坪` : '-'} helper={`依目前篩選條件與 ${filterTimeLabel} 時間區間統計`} accent="green" showHint={false} />
       </div>
 
       <section className="panel">
