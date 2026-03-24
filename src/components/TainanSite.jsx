@@ -18,7 +18,7 @@ import {
   Line,
 } from 'recharts'
 import { useDashboardModel } from '../hooks/useDashboardModel.js'
-import { formatPrice } from '../utils/dashboard.js'
+import { formatPrice, sampleSeries } from '../utils/dashboard.js'
 import { MetricCard } from './MetricCard.jsx'
 import { ChartCard } from './ChartCard.jsx'
 import { TrendBadge } from './TrendBadge.jsx'
@@ -134,9 +134,9 @@ function AdminLoginCard({ password, onPasswordChange, onSubmit, authError }) {
   )
 }
 
-function HomePage({ model, onJump, onOpenProject }) {
+function HomePage({ model, onJump }) {
   const topDistricts = model.realOverviews.slice(0, 8)
-  const hottestProjects = model.rankings.slice(0, 6)
+  const sampledCityTrend = sampleSeries(model.cityTrend, 24)
 
   return (
     <div className="page-stack">
@@ -194,14 +194,14 @@ function HomePage({ model, onJump, onOpenProject }) {
         <ChartCard title="全市價格趨勢" subtitle="先看整體市場位置，知道台南現在是在往上、往下，還是盤整。">
           <div className="chart-wrap large">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={model.cityTrend} margin={{ top: 12, right: 16, left: -18, bottom: 0 }}>
+              <ComposedChart data={sampledCityTrend} margin={{ top: 12, right: 16, left: -18, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eadfce" />
                 <XAxis dataKey="period" tick={{ fontSize: 11, fill: '#7c6855' }} tickLine={false} axisLine={false} />
                 <YAxis yAxisId="left" tick={{ fontSize: 11, fill: '#8b6b36' }} tickLine={false} axisLine={false} />
                 <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11, fill: '#1d4ed8' }} tickLine={false} axisLine={false} />
                 <Tooltip contentStyle={{ borderRadius: 16, border: '1px solid #eadfce', background: 'rgba(255,252,247,0.98)' }} />
-                <Bar yAxisId="left" dataKey="volume" name="成交筆數" fill="#efc27b" radius={[8, 8, 0, 0]} />
-                <Line yAxisId="right" dataKey="price" name="平均價格" type="monotone" stroke="#1d4ed8" strokeWidth={3} dot={{ r: 3 }} />
+                <Bar yAxisId="left" dataKey="volume" name="成交筆數" fill="#efc27b" radius={[8, 8, 0, 0]} isAnimationActive={false} />
+                <Line yAxisId="right" dataKey="price" name="平均價格" type="monotone" stroke="#1d4ed8" strokeWidth={3} dot={{ r: 3 }} isAnimationActive={false} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -236,8 +236,8 @@ function HomePage({ model, onJump, onOpenProject }) {
         </section>
       </section>
 
-      <section className="dashboard-grid">
-        <ChartCard title="全市成交熱度變化" subtitle="看成交筆數有沒有放大，幫助判斷目前市場熱不熱。">
+      <section>
+        <ChartCard title="全市成交熱度趨勢" subtitle="用趨勢線看成交筆數是放大、縮小，還是維持平穩。">
           <div className="chart-wrap large">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={model.cityVolumeTrend} margin={{ top: 12, right: 16, left: -18, bottom: 0 }}>
@@ -245,31 +245,11 @@ function HomePage({ model, onJump, onOpenProject }) {
                 <XAxis dataKey="period" tick={{ fontSize: 11, fill: '#7c6855' }} tickLine={false} axisLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: '#8b6b36' }} tickLine={false} axisLine={false} />
                 <Tooltip contentStyle={{ borderRadius: 16, border: '1px solid #eadfce', background: 'rgba(255,252,247,0.98)' }} />
-                <Bar dataKey="volume" name="成交筆數" fill="#d4a15f" radius={[8, 8, 0, 0]} />
+                <Line dataKey="volume" name="成交筆數" type="monotone" stroke="#d4a15f" strokeWidth={3} dot={{ r: 3 }} isAnimationActive={false} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
         </ChartCard>
-
-        <section className="panel simple-list-panel">
-          <div className="panel-head">
-            <div>
-              <h3>社區成交排行</h3>
-              <p>直接從成交最活躍的社區開始看，最適合拿來快速判斷行情。</p>
-            </div>
-          </div>
-          <div className="simple-list">
-            {hottestProjects.map((project) => (
-              <button key={project.name} type="button" className="simple-list-item" onClick={() => onOpenProject(project.name)}>
-                <div>
-                  <strong>{project.name}</strong>
-                  <p>{project.type} / {project.volume} 筆成交</p>
-                </div>
-                <span>{formatPrice(project.medianPrice)} 萬/坪</span>
-              </button>
-            ))}
-          </div>
-        </section>
       </section>
     </div>
   )
@@ -305,7 +285,7 @@ function DistrictPage({ model, onJump }) {
       <div className="metric-grid">
         <MetricCard label="區域平均價格" value={`${formatPrice(model.scenarioDistrictOverview?.price)} 萬/坪`} helper="先看這區大概價格" accent="blue" />
         <MetricCard label="區域趨勢方向" value={<TrendBadge value={model.scenarioDistrictOverview?.yoy} />} helper="快速看最近漲跌" accent="amber" />
-        <MetricCard label="主流總價帶" value={model.districtTotalPriceBand.label} helper="大多數買方大概落在這個區間" accent="slate" />
+        <MetricCard label="中位數總價" value={model.districtTotalPriceBand.label} helper="這區常見成交總價的中間值" accent="slate" />
         <MetricCard label="區域成交筆數" value={`${model.scenarioDistrictOverview?.volume ?? '-'} 筆`} helper="筆數越多，代表這區越熱" accent="slate" />
         <MetricCard label="主力房型" value={model.scenarioRoomMix[0]?.name ?? '-'} helper="先看這區主要成交哪一種房型" accent="green" />
       </div>
@@ -320,8 +300,8 @@ function DistrictPage({ model, onJump }) {
                 <YAxis yAxisId="left" tick={{ fontSize: 11, fill: '#8b6b36' }} tickLine={false} axisLine={false} />
                 <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11, fill: '#1d4ed8' }} tickLine={false} axisLine={false} />
                 <Tooltip contentStyle={{ borderRadius: 16, border: '1px solid #eadfce', background: 'rgba(255,252,247,0.98)' }} />
-                <Bar yAxisId="left" dataKey="volume" name="成交筆數" fill="#efc27b" radius={[8, 8, 0, 0]} />
-                <Line yAxisId="right" dataKey="price" name="平均價格" type="monotone" stroke="#1d4ed8" strokeWidth={3} dot={{ r: 3 }} />
+                <Bar yAxisId="left" dataKey="volume" name="成交筆數" fill="#efc27b" radius={[8, 8, 0, 0]} isAnimationActive={false} />
+                <Line yAxisId="right" dataKey="price" name="平均價格" type="monotone" stroke="#1d4ed8" strokeWidth={3} dot={{ r: 3 }} isAnimationActive={false} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -462,7 +442,7 @@ export function TainanSite() {
 
       <main className="site-main">
         <section id="overview">
-          <HomePage model={model} onJump={scrollToSection} onOpenProject={openProject} />
+          <HomePage model={model} onJump={scrollToSection} />
         </section>
 
         <section id="district">

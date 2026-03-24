@@ -17,6 +17,26 @@ export function withMovingAverage(data) {
   })
 }
 
+export function sampleSeries(data, maxPoints = 24) {
+  if (!Array.isArray(data) || data.length <= maxPoints) return data
+
+  const result = []
+  const lastIndex = data.length - 1
+
+  for (let index = 0; index < maxPoints; index += 1) {
+    const mappedIndex = Math.round((index / (maxPoints - 1)) * lastIndex)
+    const item = data[mappedIndex]
+    if (!item) continue
+    if (result[result.length - 1]?.period === item.period) continue
+    result.push(item)
+  }
+
+  if (result[0]?.period !== data[0]?.period) result.unshift(data[0])
+  if (result[result.length - 1]?.period !== data[lastIndex]?.period) result.push(data[lastIndex])
+
+  return result
+}
+
 function getMedian(numbers) {
   if (!numbers || numbers.length === 0) return 0
   const sorted = [...numbers].sort((a, b) => a - b)
@@ -227,7 +247,7 @@ export function buildTotalPriceBand(records) {
     median: Number(median.toFixed(0)),
     low: Number(low.toFixed(0)),
     high: Number(high.toFixed(0)),
-    label: `${Math.round(low)} - ${Math.round(high)} 萬`,
+    label: `${Math.round(median)} 萬`,
   }
 }
 
