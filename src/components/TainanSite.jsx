@@ -297,6 +297,32 @@ function HomePage({ model, onJump }) {
 }
 
 function RegionalOverviewPage({ model, onJump }) {
+  const districtTotalPriceBandItems = [
+    { name: '800萬以下', matcher: (value) => value > 0 && value < 800 },
+    { name: '800-1,200萬', matcher: (value) => value >= 800 && value < 1200 },
+    { name: '1,200-1,600萬', matcher: (value) => value >= 1200 && value < 1600 },
+    { name: '1,600-2,000萬', matcher: (value) => value >= 1600 && value < 2000 },
+    { name: '2,000萬以上', matcher: (value) => value >= 2000 },
+  ]
+    .map((bucket) => ({
+      name: bucket.name,
+      value: `${model.regionalOverviewRows.filter((row) => bucket.matcher(row.medianTotalPrice)).length} 區`,
+    }))
+    .filter((item) => !item.value.startsWith('0 '))
+
+  const districtUnitPriceBandItems = [
+    { name: '20萬以下', matcher: (value) => value > 0 && value < 20 },
+    { name: '20-30萬', matcher: (value) => value >= 20 && value < 30 },
+    { name: '30-40萬', matcher: (value) => value >= 30 && value < 40 },
+    { name: '40-50萬', matcher: (value) => value >= 40 && value < 50 },
+    { name: '50萬以上', matcher: (value) => value >= 50 },
+  ]
+    .map((bucket) => ({
+      name: bucket.name,
+      value: `${model.regionalOverviewRows.filter((row) => bucket.matcher(row.price)).length} 區`,
+    }))
+    .filter((item) => !item.value.startsWith('0 '))
+
   const totalPriceDistributionItems = model.districtTotalPriceDistribution.map((item) => ({
     name: item.name,
     value: `${item.value} 筆`,
@@ -313,6 +339,13 @@ function RegionalOverviewPage({ model, onJump }) {
     name: row.district,
     value: `${row.volume.toLocaleString()} 筆`,
   }))
+  const topTotalPriceDistrictItems = [...model.regionalOverviewRows]
+    .sort((a, b) => b.medianTotalPrice - a.medianTotalPrice)
+    .slice(0, 6)
+    .map((row) => ({
+      name: row.district,
+      value: row.medianTotalPrice > 0 ? `${row.medianTotalPrice.toLocaleString()} 萬` : '-',
+    }))
   const topPriceDistrictItems = [...model.regionalOverviewRows]
     .sort((a, b) => b.price - a.price)
     .slice(0, 6)
@@ -436,6 +469,21 @@ function RegionalOverviewPage({ model, onJump }) {
         <div className="panel-head">
           <div>
             <h3 className="panel-title-with-hint">
+              <span>各區價格分布輪廓</span>
+              <HintBadge text="先不看單一行政區，直接看台南各行政區有多少區落在不同的總價帶與單價帶，建立整體跨區分布感。" />
+            </h3>
+          </div>
+        </div>
+        <div className="dashboard-grid">
+          <DataBreakdownCard title="各區總價分布" subtitle="依各行政區中位數總價分桶，先看目前台南各區主流總價大多落在哪些帶。" items={districtTotalPriceBandItems} emptyText="目前篩選條件下沒有可顯示的各區總價分布。" />
+          <DataBreakdownCard title="各區單價分布" subtitle="依各行政區中位數單價分桶，先看目前台南各區常見單價大多落在哪些帶。" items={districtUnitPriceBandItems} emptyText="目前篩選條件下沒有可顯示的各區單價分布。" />
+        </div>
+      </section>
+
+      <section className="panel data-breakdown-card">
+        <div className="panel-head">
+          <div>
+            <h3 className="panel-title-with-hint">
               <span>各區成交概況</span>
               <HintBadge text="先看各行政區成交件數，再對照中位數價格與近期方向，建立不同區域的成交輪廓。" />
             </h3>
@@ -448,6 +496,7 @@ function RegionalOverviewPage({ model, onJump }) {
                 <tr>
                   <th>行政區</th>
                   <th>成交件數</th>
+                  <th>中位數總價</th>
                   <th>中位數價格</th>
                   <th>近期方向</th>
                 </tr>
@@ -465,6 +514,7 @@ function RegionalOverviewPage({ model, onJump }) {
                       </button>
                     </td>
                     <td>{row.volume.toLocaleString()} 筆</td>
+                    <td>{row.medianTotalPrice > 0 ? `${row.medianTotalPrice.toLocaleString()} 萬` : '-'}</td>
                     <td>{formatPrice(row.price)} 萬/坪</td>
                     <td><TrendBadge value={row.yoy} /></td>
                   </tr>
@@ -477,9 +527,10 @@ function RegionalOverviewPage({ model, onJump }) {
         )}
       </section>
 
-      <section className="dashboard-grid">
+      <section className="dashboard-grid triple">
         <DataBreakdownCard title="各區成交件數比較" subtitle="先看不同區域目前哪裡成交最活躍。" items={topVolumeDistrictItems} emptyText="目前篩選條件下沒有可顯示的行政區成交件數比較。" />
-        <DataBreakdownCard title="各區中位數價格比較" subtitle="再看不同區域目前常見單價位置的差異。" items={topPriceDistrictItems} emptyText="目前篩選條件下沒有可顯示的行政區價格比較。" />
+        <DataBreakdownCard title="各區中位數總價比較" subtitle="再看不同區域主流成交總價大約落在哪裡。" items={topTotalPriceDistrictItems} emptyText="目前篩選條件下沒有可顯示的行政區總價比較。" />
+        <DataBreakdownCard title="各區中位數價格比較" subtitle="最後看不同區域常見單價位置的差異。" items={topPriceDistrictItems} emptyText="目前篩選條件下沒有可顯示的行政區價格比較。" />
       </section>
 
       <div className="metric-grid">
@@ -643,6 +694,7 @@ function AboutPage() {
 }
 
 function ProductAnalysisPage({ model }) {
+  const [productSubview, setProductSubview] = useState('land')
   const activeTradeTargets =
     model.tradeTargetFilter.includes('all') ? ['全部交易標的'] : model.tradeTargetFilter
   const landPriceDistributionItems = model.landPriceDistribution.map((item) => ({
@@ -682,6 +734,33 @@ function ProductAnalysisPage({ model }) {
           <p className="site-hero-lead">
             先把成交資料按交易標的、產品類型和建物型態分開，再比較成交件數、總價中位數、單價中位數與坪數分布，避免把不同產品混在一起判讀。
           </p>
+        </div>
+      </section>
+
+      <section className="panel compact-panel">
+        <div className="panel-head compact">
+          <div>
+            <h3>分析次模組入口</h3>
+            <p>先選你要看的分析主題，再進入對應的比較與分布內容。</p>
+          </div>
+        </div>
+        <div className="analysis-subnav">
+          <button
+            type="button"
+            className={productSubview === 'land' ? 'analysis-subnav-button is-active' : 'analysis-subnav-button'}
+            onClick={() => setProductSubview('land')}
+          >
+            <strong>土地交易分析</strong>
+            <span>專看土地成交件數、總價、單價與土地坪數。</span>
+          </button>
+          <button
+            type="button"
+            className={productSubview === 'building' ? 'analysis-subnav-button is-active' : 'analysis-subnav-button'}
+            onClick={() => setProductSubview('building')}
+          >
+            <strong>建物 / 房地分析</strong>
+            <span>專看交易標的、產品類型、建物型態與價格分布。</span>
+          </button>
         </div>
       </section>
 
@@ -755,7 +834,7 @@ function ProductAnalysisPage({ model }) {
         </div>
       </section>
 
-      <section className="panel">
+      <section id="land-analysis" className="panel">
         <div className="panel-head">
           <div>
             <h3 className="panel-title-with-hint">
@@ -766,92 +845,122 @@ function ProductAnalysisPage({ model }) {
           </div>
         </div>
 
-        <div className="metric-grid">
-          <MetricCard label="土地成交件數" value={`${model.landAnalysisSummary.volume.toLocaleString()} 筆`} helper="目前條件下屬於土地交易的樣本數" accent="blue" showHint={false} />
-          <MetricCard label="土地總價中位數" value={model.landAnalysisSummary.medianTotalPrice > 0 ? `${model.landAnalysisSummary.medianTotalPrice} 萬` : '-'} helper="目前條件下土地成交總價中位數" accent="amber" showHint={false} />
-          <MetricCard label="土地單價中位數" value={model.landAnalysisSummary.medianUnitPrice > 0 ? `${formatPrice(model.landAnalysisSummary.medianUnitPrice)} 萬/坪` : '-'} helper="目前條件下土地成交單價中位數" accent="slate" showHint={false} />
-          <MetricCard label="平均土地坪數" value={model.landAnalysisSummary.avgPing > 0 ? `${model.landAnalysisSummary.avgPing} 坪` : '-'} helper="目前條件下土地成交的平均坪數" accent="green" showHint={false} />
-        </div>
-
-        {model.landDistrictRows.length > 0 ? (
-          <div className="table-shell">
-            <table className="records-table">
-              <thead>
-                <tr>
-                  <th>行政區</th>
-                  <th>成交件數</th>
-                  <th>總價中位數</th>
-                  <th>單價中位數</th>
-                  <th>平均土地坪數</th>
-                </tr>
-              </thead>
-              <tbody>
-                {model.landDistrictRows.map((row) => (
-                  <tr key={row.district}>
-                    <td>{row.district}</td>
-                    <td>{row.volume.toLocaleString()} 筆</td>
-                    <td>{row.medianTotalPrice > 0 ? `${row.medianTotalPrice} 萬` : '-'}</td>
-                    <td>{row.medianUnitPrice > 0 ? `${formatPrice(row.medianUnitPrice)} 萬/坪` : '-'}</td>
-                    <td>{row.avgPing > 0 ? `${row.avgPing} 坪` : '-'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {productSubview === 'land' ? (
+          <>
+            <div className="dashboard-grid">
+            <DataBreakdownCard title={<><span>土地總價分布</span><SampleStatusTag includeSpecialSamples={model.includeSpecialSamples} /></>} subtitle="看土地成交主要落在哪些總價區間。" items={landPriceDistributionItems} emptyText="目前條件下沒有可顯示的土地總價分布。" />
+            <DataBreakdownCard title={<><span>土地單價分布</span><SampleStatusTag includeSpecialSamples={model.includeSpecialSamples} /></>} subtitle="看土地成交主要落在哪些單價區間。" items={landUnitPriceDistributionItems} emptyText="目前條件下沒有可顯示的土地單價分布。" />
+            <DataBreakdownCard title={<><span>土地面積分布</span><SampleStatusTag includeSpecialSamples={model.includeSpecialSamples} /></>} subtitle="看土地成交主要落在哪些坪數帶。" items={landPingDistributionItems} emptyText="目前條件下沒有可顯示的土地面積分布。" />
           </div>
+          <div className="panel-inline-hint">
+            <HintBadge text={productSpecialHint} />
+          </div>
+
+            <div className="metric-grid">
+              <MetricCard label="土地成交件數" value={`${model.landAnalysisSummary.volume.toLocaleString()} 筆`} helper="目前條件下屬於土地交易的樣本數" accent="blue" showHint={false} />
+              <MetricCard label="土地總價中位數" value={model.landAnalysisSummary.medianTotalPrice > 0 ? `${model.landAnalysisSummary.medianTotalPrice} 萬` : '-'} helper="目前條件下土地成交總價中位數" accent="amber" showHint={false} />
+              <MetricCard label="土地單價中位數" value={model.landAnalysisSummary.medianUnitPrice > 0 ? `${formatPrice(model.landAnalysisSummary.medianUnitPrice)} 萬/坪` : '-'} helper="目前條件下土地成交單價中位數" accent="slate" showHint={false} />
+              <MetricCard label="平均土地坪數" value={model.landAnalysisSummary.avgPing > 0 ? `${model.landAnalysisSummary.avgPing} 坪` : '-'} helper="目前條件下土地成交的平均坪數" accent="green" showHint={false} />
+            </div>
+
+            {model.landDistrictRows.length > 0 ? (
+              <div className="table-shell">
+                <table className="records-table">
+                  <thead>
+                    <tr>
+                      <th>行政區</th>
+                      <th>成交件數</th>
+                      <th>總價中位數</th>
+                      <th>單價中位數</th>
+                      <th>平均土地坪數</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {model.landDistrictRows.map((row) => (
+                      <tr key={row.district}>
+                        <td>{row.district}</td>
+                        <td>{row.volume.toLocaleString()} 筆</td>
+                        <td>{row.medianTotalPrice > 0 ? `${row.medianTotalPrice} 萬` : '-'}</td>
+                        <td>{row.medianUnitPrice > 0 ? `${formatPrice(row.medianUnitPrice)} 萬/坪` : '-'}</td>
+                        <td>{row.avgPing > 0 ? `${row.avgPing} 坪` : '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="empty-state">目前條件下沒有可顯示的土地交易資料。</div>
+            )}
+          </>
         ) : (
-          <div className="empty-state">目前條件下沒有可顯示的土地交易資料。</div>
+          <div className="empty-state compact-empty-state">已切換到建物 / 房地分析。土地交易主模組內容已暫時收合。</div>
         )}
       </section>
 
-      <div className="dashboard-grid">
-        <DataBreakdownCard title={<><span>土地總價分布</span><SampleStatusTag includeSpecialSamples={model.includeSpecialSamples} /></>} subtitle="看土地成交主要落在哪些總價區間。" items={landPriceDistributionItems} emptyText="目前條件下沒有可顯示的土地總價分布。" />
-        <DataBreakdownCard title={<><span>土地單價分布</span><SampleStatusTag includeSpecialSamples={model.includeSpecialSamples} /></>} subtitle="看土地成交主要落在哪些單價區間。" items={landUnitPriceDistributionItems} emptyText="目前條件下沒有可顯示的土地單價分布。" />
-        <DataBreakdownCard title={<><span>土地面積分布</span><SampleStatusTag includeSpecialSamples={model.includeSpecialSamples} /></>} subtitle="看土地成交主要落在哪些坪數帶。" items={landPingDistributionItems} emptyText="目前條件下沒有可顯示的土地面積分布。" />
-      </div>
-      <div className="panel-inline-hint">
-        <HintBadge text={productSpecialHint} />
-      </div>
-
-      <section className="panel data-breakdown-card">
-        <div className="panel-head">
-          <div>
-            <h3 className="panel-title-with-hint">
-              <span>交易標的比較</span>
-              <HintBadge text="先把土地、建物、房地、房地加車位分開看，再比較成交件數、總價中位數、單價中位數與平均坪數。" />
-            </h3>
+      {productSubview === 'building' ? (
+        <>
+          <div className="dashboard-grid">
+            <DataBreakdownCard title={<><span>坪數分布</span><SampleStatusTag includeSpecialSamples={model.includeSpecialSamples} /></>} subtitle="看目前產品樣本主要落在哪些坪數帶。" items={productPingDistributionItems} emptyText="目前條件下沒有可顯示的坪數分布。" />
+            <DataBreakdownCard title={<><span>總價分布</span><SampleStatusTag includeSpecialSamples={model.includeSpecialSamples} /></>} subtitle="看目前產品樣本主要落在哪些總價區間。" items={productTotalPriceDistributionItems} emptyText="目前條件下沒有可顯示的總價分布。" />
+            <DataBreakdownCard title={<><span>單價分布</span><SampleStatusTag includeSpecialSamples={model.includeSpecialSamples} /></>} subtitle="看目前產品樣本主要落在哪些單價區間。" items={productUnitPriceDistributionItems} emptyText="目前條件下沒有可顯示的單價分布。" />
           </div>
-        </div>
-        {model.tradeTargetAnalysisRows.length > 0 ? (
-          <div className="table-shell">
-            <table className="records-table">
-              <thead>
-                <tr>
-                  <th>交易標的</th>
-                  <th>成交件數</th>
-                  <th>總價中位數</th>
-                  <th>單價中位數</th>
-                  <th>平均面積</th>
-                </tr>
-              </thead>
-              <tbody>
-                {model.tradeTargetAnalysisRows.map((row) => (
-                  <tr key={row.name}>
-                    <td>{row.name}</td>
-                    <td>{row.volume.toLocaleString()} 筆</td>
-                    <td>{row.medianTotalPrice > 0 ? `${row.medianTotalPrice} 萬` : '-'}</td>
-                    <td>{row.medianUnitPrice > 0 ? `${formatPrice(row.medianUnitPrice)} 萬/坪` : '-'}</td>
-                    <td>{row.avgPing > 0 ? `${row.avgPing} 坪` : '-'}</td>
+          <div className="panel-inline-hint">
+            <HintBadge text={productSpecialHint} />
+          </div>
+
+          <div className="metric-grid">
+            <MetricCard label="樣本件數" value={`${model.productAnalysisSummary.volume.toLocaleString()} 筆`} helper="目前產品分析納入的成交樣本數" accent="blue" showHint={false} />
+            <MetricCard label="總價中位數" value={model.productAnalysisSummary.medianTotalPrice > 0 ? `${model.productAnalysisSummary.medianTotalPrice} 萬` : '-'} helper="用目前條件下的成交總價中位數統計" accent="amber" showHint={false} />
+            <MetricCard label="單價中位數" value={model.productAnalysisSummary.medianUnitPrice > 0 ? `${formatPrice(model.productAnalysisSummary.medianUnitPrice)} 萬/坪` : '-'} helper="用目前條件下的成交單價中位數統計" accent="slate" showHint={false} />
+            <MetricCard
+              label={model.isLandOnlyMode ? '平均土地坪數' : '平均建坪'}
+              value={model.productAnalysisSummary.avgPing > 0 ? `${model.productAnalysisSummary.avgPing} 坪` : '-'}
+              helper={model.isLandOnlyMode ? '目前樣本的平均土地坪數' : '目前樣本的平均建物坪數'}
+              accent="green"
+              showHint={false}
+            />
+          </div>
+
+          <section id="building-analysis" className="panel data-breakdown-card">
+            <div className="panel-head">
+              <div>
+                <h3 className="panel-title-with-hint">
+                  <span>交易標的比較</span>
+                  <HintBadge text="先把土地、建物、房地、房地加車位分開看，再比較成交件數、總價中位數、單價中位數與平均坪數。" />
+                </h3>
+              </div>
+            </div>
+            {model.tradeTargetAnalysisRows.length > 0 ? (
+            <div className="table-shell">
+              <table className="records-table">
+                <thead>
+                  <tr>
+                    <th>交易標的</th>
+                    <th>成交件數</th>
+                    <th>總價中位數</th>
+                    <th>單價中位數</th>
+                    <th>平均面積</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="empty-state">目前條件下沒有可顯示的交易標的比較資料。</div>
-        )}
-      </section>
+                </thead>
+                <tbody>
+                  {model.tradeTargetAnalysisRows.map((row) => (
+                    <tr key={row.name}>
+                      <td>{row.name}</td>
+                      <td>{row.volume.toLocaleString()} 筆</td>
+                      <td>{row.medianTotalPrice > 0 ? `${row.medianTotalPrice} 萬` : '-'}</td>
+                      <td>{row.medianUnitPrice > 0 ? `${formatPrice(row.medianUnitPrice)} 萬/坪` : '-'}</td>
+                      <td>{row.avgPing > 0 ? `${row.avgPing} 坪` : '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="empty-state">目前條件下沒有可顯示的交易標的比較資料。</div>
+          )}
+          </section>
 
-      <section className="panel data-breakdown-card">
+          <section className="panel data-breakdown-card">
         <div className="panel-head">
           <div>
             <h3 className="panel-title-with-hint">
@@ -890,66 +999,46 @@ function ProductAnalysisPage({ model }) {
         )}
       </section>
 
-      <section className="panel data-breakdown-card">
-        <div className="panel-head">
-          <div>
-            <h3 className="panel-title-with-hint">
-              <span>建物型態比較</span>
-              <HintBadge text="再看大樓、華廈、公寓、透天與店面商辦的成交件數、總價中位數、單價中位數與平均建坪。" />
-            </h3>
-          </div>
-        </div>
-        {model.buildingTypeAnalysisRows.length > 0 ? (
-          <div className="table-shell">
-            <table className="records-table">
-              <thead>
-                <tr>
-                  <th>建物型態</th>
-                  <th>成交件數</th>
-                  <th>總價中位數</th>
-                  <th>單價中位數</th>
-                  <th>平均建坪</th>
-                </tr>
-              </thead>
-              <tbody>
-                {model.buildingTypeAnalysisRows.map((row) => (
-                  <tr key={row.name}>
-                    <td>{row.name}</td>
-                    <td>{row.volume.toLocaleString()} 筆</td>
-                    <td>{row.medianTotalPrice > 0 ? `${row.medianTotalPrice} 萬` : '-'}</td>
-                    <td>{row.medianUnitPrice > 0 ? `${formatPrice(row.medianUnitPrice)} 萬/坪` : '-'}</td>
-                    <td>{row.avgPing > 0 ? `${row.avgPing} 坪` : '-'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="empty-state">目前條件下沒有可顯示的建物型態比較資料。</div>
-        )}
-      </section>
-
-      <div className="dashboard-grid">
-        <DataBreakdownCard title={<><span>坪數分布</span><SampleStatusTag includeSpecialSamples={model.includeSpecialSamples} /></>} subtitle="看目前產品樣本主要落在哪些坪數帶。" items={productPingDistributionItems} emptyText="目前條件下沒有可顯示的坪數分布。" />
-        <DataBreakdownCard title={<><span>總價分布</span><SampleStatusTag includeSpecialSamples={model.includeSpecialSamples} /></>} subtitle="看目前產品樣本主要落在哪些總價區間。" items={productTotalPriceDistributionItems} emptyText="目前條件下沒有可顯示的總價分布。" />
-        <DataBreakdownCard title={<><span>單價分布</span><SampleStatusTag includeSpecialSamples={model.includeSpecialSamples} /></>} subtitle="看目前產品樣本主要落在哪些單價區間。" items={productUnitPriceDistributionItems} emptyText="目前條件下沒有可顯示的單價分布。" />
-      </div>
-      <div className="panel-inline-hint">
-        <HintBadge text={productSpecialHint} />
-      </div>
-
-      <div className="metric-grid">
-        <MetricCard label="樣本件數" value={`${model.productAnalysisSummary.volume.toLocaleString()} 筆`} helper="目前產品分析納入的成交樣本數" accent="blue" showHint={false} />
-        <MetricCard label="總價中位數" value={model.productAnalysisSummary.medianTotalPrice > 0 ? `${model.productAnalysisSummary.medianTotalPrice} 萬` : '-'} helper="用目前條件下的成交總價中位數統計" accent="amber" showHint={false} />
-        <MetricCard label="單價中位數" value={model.productAnalysisSummary.medianUnitPrice > 0 ? `${formatPrice(model.productAnalysisSummary.medianUnitPrice)} 萬/坪` : '-'} helper="用目前條件下的成交單價中位數統計" accent="slate" showHint={false} />
-        <MetricCard
-          label={model.isLandOnlyMode ? '平均土地坪數' : '平均建坪'}
-          value={model.productAnalysisSummary.avgPing > 0 ? `${model.productAnalysisSummary.avgPing} 坪` : '-'}
-          helper={model.isLandOnlyMode ? '目前樣本的平均土地坪數' : '目前樣本的平均建物坪數'}
-          accent="green"
-          showHint={false}
-        />
-      </div>
+          <section className="panel data-breakdown-card">
+            <div className="panel-head">
+              <div>
+                <h3 className="panel-title-with-hint">
+                  <span>建物型態比較</span>
+                  <HintBadge text="再看大樓、華廈、公寓、透天與店面商辦的成交件數、總價中位數、單價中位數與平均建坪。" />
+                </h3>
+              </div>
+            </div>
+            {model.buildingTypeAnalysisRows.length > 0 ? (
+              <div className="table-shell">
+                <table className="records-table">
+                  <thead>
+                    <tr>
+                      <th>建物型態</th>
+                      <th>成交件數</th>
+                      <th>總價中位數</th>
+                      <th>單價中位數</th>
+                      <th>平均建坪</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {model.buildingTypeAnalysisRows.map((row) => (
+                      <tr key={row.name}>
+                        <td>{row.name}</td>
+                        <td>{row.volume.toLocaleString()} 筆</td>
+                        <td>{row.medianTotalPrice > 0 ? `${row.medianTotalPrice} 萬` : '-'}</td>
+                        <td>{row.medianUnitPrice > 0 ? `${formatPrice(row.medianUnitPrice)} 萬/坪` : '-'}</td>
+                        <td>{row.avgPing > 0 ? `${row.avgPing} 坪` : '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="empty-state">目前條件下沒有可顯示的建物型態比較資料。</div>
+            )}
+          </section>
+        </>
+      ) : null}
     </div>
   )
 }

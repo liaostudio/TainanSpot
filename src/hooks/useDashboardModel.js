@@ -560,6 +560,7 @@ export function useDashboardModel() {
         district: item.name,
         volume: item.volume,
         price: item.price,
+        medianTotalPrice: item.medianTotalPrice || 0,
         yoy: item.yoy,
       }))
       .sort((a, b) => b.volume - a.volume)
