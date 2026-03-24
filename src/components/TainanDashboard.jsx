@@ -210,9 +210,9 @@ export function ProjectDetailView({ detail, onBack }) {
       <header className="project-hero panel">
         <div className="project-hero-top">
           <div className="project-hero-copy">
-            <p className="eyebrow">Community Pricing Desk</p>
+          <p className="eyebrow">Community Analysis Desk</p>
             <h2>{detail.projectName}</h2>
-            <p className="project-subtitle">這頁只做判價分析。先看這個社區現在價格在哪裡，再看歷史走勢、樓層差異和最近成交明細。</p>
+            <p className="project-subtitle">這一段只做社區判價分析。先看社區價格定位，再看歷史走勢、樓層差異和最近成交明細。</p>
             <div className="project-badges">
               <span className="upload-chip">以前成交過 {detail.stats.volume} 筆</span>
               <span className="upload-chip">平均價格 {formatPrice(detail.stats.medianPrice)} 萬/坪</span>
@@ -264,7 +264,7 @@ export function ProjectDetailView({ detail, onBack }) {
             <div className="panel-head">
               <div>
                 <h3>判價重點</h3>
-                <p>先看這個社區現在價格站在哪裡。</p>
+              <p>先看這個社區現在的價格定位和主要成交輪廓。</p>
               </div>
             </div>
             <div className="project-overview-list">
@@ -306,7 +306,7 @@ export function ProjectDetailView({ detail, onBack }) {
 
       <section id="project-trend" className="project-section project-section-primary">
         <ChartCard
-          title="這個社區的價格變化"
+          title="社區價格趨勢"
           subtitle="主圖只回答一件事：這個社區現在的價格，在歷史上算高、算低，還是差不多。"
           actions={<DownloadChartButton chartRef={projectTrendRef} fileName={`${detail.projectName}-價格變化`} />}
         >
@@ -331,7 +331,7 @@ export function ProjectDetailView({ detail, onBack }) {
       </section>
 
       <div className="project-detail-grid">
-        <ChartCard title="不同樓層的差別" subtitle="看樓層和價格、坪數的關係，這是談價時最常用的參考。">
+        <ChartCard title="樓層價格差異" subtitle="看樓層和價格、坪數的關係，這是談價時最常用的參考。">
           <div className="chart-wrap medium">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={detail.floorStats} margin={{ top: 8, right: 16, left: -20, bottom: 0 }}>
@@ -347,7 +347,7 @@ export function ProjectDetailView({ detail, onBack }) {
           </div>
         </ChartCard>
 
-        <DataSummaryList title="房型和產品結構" subtitle="直接看數量分布，判斷這個社區主要成交什麼產品。" items={[...roomMixItems, ...typeMixItems]} />
+        <DataSummaryList title="社區產品分布" subtitle="直接看數量分布，判斷這個社區主要成交什麼產品。" items={[...roomMixItems, ...typeMixItems]} />
       </div>
 
       <section id="project-records" className="project-section project-section-table">
@@ -505,9 +505,9 @@ export function TainanDashboardView({ model, onSelectProject, canManageImports =
     <div className="dashboard-page">
       <header className="dashboard-hero dashboard-hero-pro">
         <div className="hero-copy hero-copy-compact pro-hero-copy">
-          <p className="eyebrow">Market Analysis Desk</p>
-          <h1>專業分析工作台</h1>
-          <p className="hero-lead">這頁只放分析和判斷會用到的東西：篩選器、關鍵數據、比較圖、社區排行和匯出工具。</p>
+          <p className="eyebrow">Professional Analysis Desk</p>
+          <h1>專業分析台</h1>
+          <p className="hero-lead">這一段只放分析和判斷會用到的東西：篩選器、關鍵數據、比較圖、社區排行和匯出工具。</p>
         </div>
         <div className="metric-grid pro-metric-grid">
           <MetricCard label="目前分析行政區" value={selectedDistrict} helper="先確認現在正在看哪一區" accent="slate" />
