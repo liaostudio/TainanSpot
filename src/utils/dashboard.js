@@ -222,16 +222,21 @@ export function scopeRecordsByTimeFrame(records, timeFrame) {
 export function buildDistrictOverviews(recordsByDistrict) {
   return Array.from(recordsByDistrict.entries())
     .map(([district, records]) => {
-      const current = records.filter((record) => record.year >= 2025)
-      const previous = records.filter((record) => record.year === 2024)
+      const maxYear = Math.max(...records.map((record) => record.year || 0))
+      const current = records.filter((record) => record.year === maxYear)
+      const previous = records.filter((record) => record.year === maxYear - 1)
       const currentMedian = getMedian(current.map((record) => record.unitPricePing))
       const previousMedian = getMedian(previous.map((record) => record.unitPricePing))
+      const totalPrices = current
+        .map((record) => (record.totalPrice > 0 ? record.totalPrice / 10000 : 0))
+        .filter((price) => price > 0)
       const yoy = previousMedian > 0 ? ((currentMedian - previousMedian) / previousMedian) * 100 : 0
 
       return {
         city: '台南市',
         name: district,
         price: Number(currentMedian.toFixed(2)),
+        medianTotalPrice: totalPrices.length ? Number(getMedian(totalPrices).toFixed(0)) : 0,
         yoy: Number(yoy.toFixed(1)),
         volume: current.length || records.length,
       }

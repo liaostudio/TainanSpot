@@ -16,14 +16,14 @@ import {
   Line,
 } from 'recharts'
 import { useDashboardModel } from '../hooks/useDashboardModel.js'
-import { timeTabs, tainanGrid } from '../data/dashboardData.js'
+import { timeTabs } from '../data/dashboardData.js'
 import { buildingTypeLabels, tradeTargetLabels } from './siteLabels.js'
 import { DataBreakdownCard, SampleStatusTag } from './siteShared.jsx'
 import { MetricCard } from './MetricCard.jsx'
 import { ChartCard } from './ChartCard.jsx'
 import { TrendBadge } from './TrendBadge.jsx'
 import { HintBadge } from './HintBadge.jsx'
-import { formatPrice, heatColor } from '../utils/dashboard.js'
+import { formatPrice } from '../utils/dashboard.js'
 
 const navItems = [
   { id: 'home', label: '首頁', icon: Building2 },
@@ -271,30 +271,6 @@ function RegionalSection({ model }) {
           </div>
         </div>
       </section>
-
-      <ChartCard
-        title="行政區價格熱圖"
-        subtitle="依目前篩選條件下各行政區最新年度的單價中位數著色。點行政區可切換單區分析。"
-      >
-        <div className="heatmap">
-          {tainanGrid.map((cell) => {
-            const overview = model.realOverviews.find((item) => item.name === cell.id)
-            const selected = model.selectedDistrict === cell.id
-            return (
-              <button
-                key={cell.id}
-                type="button"
-                className={`heat-cell ${heatColor(overview?.price, model.minPrice, model.maxPrice)} ${selected ? 'selected' : ''}`}
-                style={{ gridColumn: cell.c, gridRow: cell.r }}
-                onClick={() => model.availableDistricts.includes(cell.id) && model.setSelectedDistrict(cell.id)}
-              >
-                <strong>{cell.id}</strong>
-                <span>{overview ? `${formatPrice(overview.price)}萬/坪` : '無資料'}</span>
-              </button>
-            )
-          })}
-        </div>
-      </ChartCard>
 
       <section className="rebuild-grid-2">
         <section className="panel">
