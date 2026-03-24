@@ -17,6 +17,7 @@ import {
   buildTotalPriceBand,
   buildValueProjects,
   buildVolumeSeries,
+  filterSeriesFromYear,
   filterRecordsByScenario,
   groupRecordsByDistrict,
   processTrendData,
@@ -177,15 +178,22 @@ export function useDashboardModel() {
   )
 
   const cityTrend = useMemo(
-    () => (isRealMode ? manifest.cityTrendByTab?.[cityActiveTab] || [] : cityTrendByTab[cityActiveTab]),
+    () =>
+      filterSeriesFromYear(
+        isRealMode ? manifest.cityTrendByTab?.[cityActiveTab] || [] : cityTrendByTab[cityActiveTab],
+        2012,
+      ),
     [cityActiveTab, isRealMode, manifest.cityTrendByTab],
   )
 
   const cityVolumeTrend = useMemo(
     () =>
-      isRealMode
-        ? manifest.cityVolumeTrendByTab?.[cityActiveTab] || []
-        : cityTrendByTab[cityActiveTab].map((item) => ({ period: item.period, volume: item.volume })),
+      filterSeriesFromYear(
+        isRealMode
+          ? manifest.cityVolumeTrendByTab?.[cityActiveTab] || []
+          : cityTrendByTab[cityActiveTab].map((item) => ({ period: item.period, volume: item.volume })),
+        2012,
+      ),
     [cityActiveTab, isRealMode, manifest.cityVolumeTrendByTab],
   )
 

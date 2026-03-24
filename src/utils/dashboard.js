@@ -37,6 +37,17 @@ export function sampleSeries(data, maxPoints = 24) {
   return result
 }
 
+export function filterSeriesFromYear(data, minYear = 2012) {
+  if (!Array.isArray(data)) return []
+
+  return data.filter((item) => {
+    const period = String(item?.period || '')
+    const yearMatch = period.match(/^(\d{4})/)
+    if (!yearMatch) return true
+    return Number(yearMatch[1]) >= minYear
+  })
+}
+
 function getMedian(numbers) {
   if (!numbers || numbers.length === 0) return 0
   const sorted = [...numbers].sort((a, b) => a - b)

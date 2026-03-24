@@ -23,10 +23,6 @@ import { formatPrice, heatColor, sampleSeries } from '../utils/dashboard.js'
 import { MetricCard } from './MetricCard.jsx'
 import { ChartCard } from './ChartCard.jsx'
 import { TrendBadge } from './TrendBadge.jsx'
-
-const LazyDashboardView = lazy(() =>
-  import('./TainanDashboard.jsx').then((module) => ({ default: module.TainanDashboardView })),
-)
 const LazyProjectDetailView = lazy(() =>
   import('./TainanDashboard.jsx').then((module) => ({ default: module.ProjectDetailView })),
 )
@@ -35,7 +31,7 @@ const sectionTabs = [
   { id: 'overview', label: '全市總覽', icon: Building2 },
   { id: 'district', label: '行政區分析', icon: MapPinned },
   { id: 'community', label: '社區分析', icon: BarChart3 },
-  { id: 'pro', label: '專業分析', icon: BarChart3 },
+  { id: 'manage', label: '資料管理', icon: LockKeyhole },
   { id: 'about', label: '資料說明', icon: FileText },
 ]
 const propertyTypeLabels = {
@@ -168,8 +164,8 @@ function HomePage({ model, onJump }) {
               進入區域分析台
               <ArrowRight size={16} />
             </button>
-            <button type="button" className="cta-secondary" onClick={() => onJump('pro')}>
-              打開專業分析台
+            <button type="button" className="cta-secondary" onClick={() => onJump('community')}>
+              直接看社區分析
             </button>
           </div>
         </div>
@@ -275,6 +271,7 @@ function DistrictPage({ model, onJump }) {
     name: item.name,
     value: `${item.value} 筆`,
   }))
+  const topProjects = model.scenarioRankings.slice(0, 8)
   return (
     <div className="page-stack">
       <section className="site-hero panel compact-hero dashboard-hero">
@@ -378,10 +375,40 @@ function DistrictPage({ model, onJump }) {
         <DataBreakdownCard title="區域房型分布" subtitle="直接看成交數量，不用圓餅圖。" items={roomMixItems} />
       </section>
 
-      <section className="district-cta-row">
-        <button type="button" className="cta-secondary" onClick={() => onJump('pro')}>
-          看更多專業圖表
-        </button>
+      <section className="panel data-breakdown-card">
+        <div className="panel-head">
+          <div>
+            <h3>這一區值得先看的社區</h3>
+            <p>先從成交筆數較多、資料較完整的社區往下看，判價會更快。</p>
+          </div>
+        </div>
+        {topProjects.length > 0 ? (
+          <div className="simple-list">
+            {topProjects.map((project) => (
+              <button
+                key={project.name}
+                type="button"
+                className="simple-list-item"
+                onClick={() => {
+                  window.dispatchEvent(
+                    new CustomEvent('tainanspot:open-project', {
+                      detail: { projectName: project.name },
+                    }),
+                  )
+                  onJump('community')
+                }}
+              >
+                <div>
+                  <strong>{project.name}</strong>
+                  <p>{project.volume} 筆成交</p>
+                </div>
+                <span>{formatPrice(project.medianPrice)} 萬/坪</span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state">目前這個行政區在目前篩選條件下沒有可分析的社區。</div>
+        )}
       </section>
     </div>
   )
@@ -463,6 +490,98 @@ function AboutPage() {
   )
 }
 
+function ManagePage({
+  model,
+  isAdminAuthenticated,
+  adminPasswordInput,
+  setAdminPasswordInput,
+  adminAuthError,
+  handleAdminLogin,
+  handleAdminLogout,
+}) {
+  return (
+    <div className="page-stack">
+      {isAdminAuthenticated ? (
+        <section className="panel upload-panel">
+          <div className="panel-head compact">
+            <div>
+              <h3>GitHub 共用資料管理</h3>
+              <p>把新一期 CSV 放進 `data/raw/`，重新部署後，全站就會更新成同一份資料。</p>
+            </div>
+            <div className="upload-actions">
+              <button type="button" className="upload-trigger ghost" onClick={handleAdminLogout}>
+                登出管理
+              </button>
+            </div>
+          </div>
+          <div className="upload-stats">
+            <span className="upload-chip highlight">已匯入 {model.importedFiles.length} 期</span>
+            <span className="upload-chip">現在資料：{model.isRealMode ? '真實資料' : '展示資料'}</span>
+            <span className="upload-chip">{model.isSharedMode ? '資料模式：GitHub 共用資料' : `資料模式：${model.storageMode}`}</span>
+            <span className="upload-chip">共讀到：{model.uploadStats.totalRaw.toLocaleString()} 筆</span>
+            <span className="upload-chip">排除掉：{model.uploadStats.totalExcluded.toLocaleString()} 筆</span>
+            <span className="upload-chip">重複的：{model.uploadStats.duplicateCount.toLocaleString()} 筆</span>
+            <span className="upload-chip">{model.latestDataDate ? `最新資料：${model.latestDataDate}` : '目前尚未有可分析資料'}</span>
+            <span className="upload-chip">{model.persistedAt ? `最近同步：${new Date(model.persistedAt).toLocaleString('zh-TW')}` : '目前還沒有同步記錄'}</span>
+          </div>
+          {model.importMessage ? <p className="import-feedback success">{model.importMessage}</p> : null}
+          {model.importError ? <p className="import-feedback error">{model.importError}</p> : null}
+          <div className="upload-sop">
+            <span>1. 放進 `data/raw/`</span>
+            <span>2. 跑 `npm run build:data`</span>
+            <span>3. push 到 GitHub</span>
+          </div>
+          <div className="import-file-list">
+            <div className="panel-head compact">
+              <div>
+                <h3>已匯入檔案清單</h3>
+                <p>這份清單就是目前已整理進共用資料檔的期數。</p>
+              </div>
+            </div>
+            {model.importedFiles.length > 0 ? (
+              <div className="table-shell">
+                <table className="records-table import-files-table">
+                  <thead>
+                    <tr>
+                      <th>檔名</th>
+                      <th>型態</th>
+                      <th>有效資料</th>
+                      <th>排除</th>
+                      <th>重複</th>
+                      <th>整理時間</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {model.importedFiles.map((file) => (
+                      <tr key={file.name}>
+                        <td>{file.name}</td>
+                        <td>{file.propertyType === 'presale' ? '預售屋' : '中古屋'}</td>
+                        <td>{file.validRecords}</td>
+                        <td>{file.excludedCount}</td>
+                        <td>{file.duplicateCount}</td>
+                        <td>{new Date(file.importedAt).toLocaleString('zh-TW')}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="empty-state">目前還沒有任何匯入期數。</div>
+            )}
+          </div>
+        </section>
+      ) : (
+        <AdminLoginCard
+          password={adminPasswordInput}
+          onPasswordChange={setAdminPasswordInput}
+          onSubmit={handleAdminLogin}
+          authError={adminAuthError}
+        />
+      )}
+    </div>
+  )
+}
+
 export function TainanSite() {
   const model = useDashboardModel()
   const [selectedProjectName, setSelectedProjectName] = useState(null)
@@ -484,6 +603,16 @@ export function TainanSite() {
     setSelectedProjectName(projectName)
     setTimeout(() => scrollToSection('community'), 0)
   }
+
+  useEffect(() => {
+    const handleOpenProject = (event) => {
+      if (!event.detail?.projectName) return
+      openProject(event.detail.projectName)
+    }
+
+    window.addEventListener('tainanspot:open-project', handleOpenProject)
+    return () => window.removeEventListener('tainanspot:open-project', handleOpenProject)
+  }, [])
 
   const handleAdminLogin = (event) => {
     event.preventDefault()
@@ -534,23 +663,16 @@ export function TainanSite() {
           )}
         </section>
 
-        <section id="pro" className="single-page-section">
-          <Suspense fallback={<section className="panel"><p>正在載入專業分析頁...</p></section>}>
-            <LazyDashboardView
-              model={model}
-              onSelectProject={openProject}
-              canManageImports={isAdminAuthenticated}
-              onLogoutImports={handleAdminLogout}
-              loginCard={
-                <AdminLoginCard
-                  password={adminPasswordInput}
-                  onPasswordChange={setAdminPasswordInput}
-                  onSubmit={handleAdminLogin}
-                  authError={adminAuthError}
-                />
-              }
-            />
-          </Suspense>
+        <section id="manage" className="single-page-section">
+          <ManagePage
+            model={model}
+            isAdminAuthenticated={isAdminAuthenticated}
+            adminPasswordInput={adminPasswordInput}
+            setAdminPasswordInput={setAdminPasswordInput}
+            adminAuthError={adminAuthError}
+            handleAdminLogin={handleAdminLogin}
+            handleAdminLogout={handleAdminLogout}
+          />
         </section>
 
         <section id="about" className="single-page-section">
