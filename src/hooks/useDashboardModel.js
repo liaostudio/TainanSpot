@@ -7,14 +7,20 @@ import {
 } from '../data/dashboardData.js'
 import {
   buildAgeDistribution,
+  buildBuildingTypeMix,
+  buildBuildingTypeAnalysis,
   buildComparisonSeries,
   buildInsights,
+  buildPingDistribution,
   buildPopularLocations,
   buildProjectDetail,
+  buildProductTypeAnalysis,
   buildPropertyTypeMix,
   buildRankings,
   buildRoomLayout,
+  buildTotalPriceDistribution,
   buildTotalPriceBand,
+  buildUnitPriceDistribution,
   buildValueProjects,
   buildVolumeSeries,
   filterSeriesFromYear,
@@ -32,10 +38,18 @@ export function useDashboardModel() {
   const [cityActiveTab, setCityActiveTab] = useState('1y')
   const [districtActiveTab, setDistrictActiveTab] = useState('1y')
   const [selectedDistrict, setSelectedDistrict] = useState('東區')
+  const [filterDistrict, setFilterDistrict] = useState('all')
   const [selectedLocation, setSelectedLocation] = useState('all')
   const [buyerScenario, setBuyerScenario] = useState('all')
   const [propertyTypeFilter, setPropertyTypeFilter] = useState(['existing', 'presale'])
   const [buildingFilter, setBuildingFilter] = useState(['elevator', 'apartment', 'house', 'store'])
+  const [filterRoomCount, setFilterRoomCount] = useState('all')
+  const [filterAgeRange, setFilterAgeRange] = useState('all')
+  const [filterParking, setFilterParking] = useState('all')
+  const [filterFloorType, setFilterFloorType] = useState('all')
+  const [filterPingMin, setFilterPingMin] = useState('')
+  const [filterPingMax, setFilterPingMax] = useState('')
+  const [includeSpecialSamples, setIncludeSpecialSamples] = useState(false)
   const {
     isProcessing,
     manifest,
@@ -66,6 +80,11 @@ export function useDashboardModel() {
   const comparisonDistricts = useMemo(
     () => (isRealMode ? availableDistricts.slice(0, 4) : ['東區', '永康區', '善化區', '安平區']),
     [availableDistricts, isRealMode],
+  )
+
+  const allLoadedRecords = useMemo(
+    () => Array.from(recordsByDistrict.values()).flat(),
+    [recordsByDistrict],
   )
 
   useEffect(() => {
@@ -371,6 +390,98 @@ export function useDashboardModel() {
     [latestReferenceDate, scenarioResidentialRecords],
   )
 
+  const districtTotalPriceDistribution = useMemo(
+    () => buildTotalPriceDistribution(scenarioDistrictRecords),
+    [scenarioDistrictRecords],
+  )
+
+  const districtUnitPriceDistribution = useMemo(
+    () => buildUnitPriceDistribution(scenarioDistrictRecords),
+    [scenarioDistrictRecords],
+  )
+
+  const districtBuildingTypeMix = useMemo(
+    () => buildBuildingTypeMix(scenarioDistrictRecords),
+    [scenarioDistrictRecords],
+  )
+
+  const productAnalysisRecords = useMemo(() => {
+    if (!isRealMode) return districtBaseRecords
+
+    const source = allLoadedRecords.length > 0 ? allLoadedRecords : districtBaseRecords
+    return source.filter(
+      (record) =>
+        propertyTypeFilter.includes(record.type) &&
+        checkBuildingMatch(record, buildingFilter),
+    )
+  }, [allLoadedRecords, buildingFilter, districtBaseRecords, isRealMode, propertyTypeFilter])
+
+  const productTypeAnalysisRows = useMemo(
+    () => buildProductTypeAnalysis(productAnalysisRecords),
+    [productAnalysisRecords],
+  )
+
+  const buildingTypeAnalysisRows = useMemo(
+    () => buildBuildingTypeAnalysis(productAnalysisRecords),
+    [productAnalysisRecords],
+  )
+
+  const productPingDistribution = useMemo(
+    () => buildPingDistribution(productAnalysisRecords),
+    [productAnalysisRecords],
+  )
+
+  const productTotalPriceDistribution = useMemo(
+    () => buildTotalPriceDistribution(productAnalysisRecords),
+    [productAnalysisRecords],
+  )
+
+  const productUnitPriceDistribution = useMemo(
+    () => buildUnitPriceDistribution(productAnalysisRecords),
+    [productAnalysisRecords],
+  )
+
+  const productAnalysisSummary = useMemo(() => {
+    if (productAnalysisRecords.length === 0) {
+      return {
+        volume: 0,
+        medianTotalPrice: 0,
+        medianUnitPrice: 0,
+        avgPing: 0,
+      }
+    }
+
+    const totalPrices = productAnalysisRecords
+      .map((record) => (record.totalPrice > 0 ? record.totalPrice / 10000 : 0))
+      .filter((price) => price > 0)
+    const unitPrices = productAnalysisRecords
+      .map((record) => Number(record.unitPricePing || 0))
+      .filter((price) => price > 0)
+    const pings = productAnalysisRecords
+      .map((record) => Number(record.totalPing || 0))
+      .filter((ping) => ping > 0)
+
+    return {
+      volume: productAnalysisRecords.length,
+      medianTotalPrice: totalPrices.length ? Math.round(totalPrices.sort((a, b) => a - b)[Math.floor(totalPrices.length / 2)]) : 0,
+      medianUnitPrice: unitPrices.length ? Number(unitPrices.sort((a, b) => a - b)[Math.floor(unitPrices.length / 2)].toFixed(2)) : 0,
+      avgPing: pings.length ? Number((pings.reduce((sum, ping) => sum + ping, 0) / pings.length).toFixed(1)) : 0,
+    }
+  }, [productAnalysisRecords])
+
+  const regionalOverviewRows = useMemo(() => {
+    if (filteredRealOverviews.length === 0) return []
+
+    return filteredRealOverviews
+      .map((item) => ({
+        district: item.name,
+        volume: item.volume,
+        price: item.price,
+        yoy: item.yoy,
+      }))
+      .sort((a, b) => b.volume - a.volume)
+  }, [filteredRealOverviews])
+
   const valueProjects = useMemo(
     () => buildValueProjects(scenarioDistrictRecords, scenarioDistrictOverview?.price || 0),
     [scenarioDistrictOverview?.price, scenarioDistrictRecords],
@@ -397,6 +508,136 @@ export function useDashboardModel() {
       setSelectedLocation('all')
     }
   }, [popularLocations, selectedLocation])
+
+  const filterPageBaseRecords = useMemo(() => {
+    if (isRealMode) {
+      const source = allLoadedRecords.length > 0 ? allLoadedRecords : districtAllRecords
+      return source.filter(
+        (record) =>
+          propertyTypeFilter.includes(record.type) &&
+          checkBuildingMatch(record, buildingFilter) &&
+          (filterDistrict === 'all' ? true : record.district === filterDistrict),
+      )
+    }
+
+    return districtRecords
+  }, [
+    allLoadedRecords,
+    buildingFilter,
+    districtAllRecords,
+    districtRecords,
+    filterDistrict,
+    isRealMode,
+    propertyTypeFilter,
+  ])
+
+  const filterPageRecords = useMemo(() => {
+    return filterPageBaseRecords.filter((record) => {
+      const matchesRoom =
+        filterRoomCount === 'all'
+          ? true
+          : filterRoomCount === '4+'
+            ? record.roomCount >= 4
+            : record.roomCount === Number(filterRoomCount)
+
+      const matchesAge =
+        filterAgeRange === 'all'
+          ? true
+          : filterAgeRange === '0-5'
+            ? record.age >= 0 && record.age <= 5
+            : filterAgeRange === '6-15'
+              ? record.age >= 6 && record.age <= 15
+              : filterAgeRange === '16-30'
+                ? record.age >= 16 && record.age <= 30
+                : record.age > 30
+
+      const matchesParking =
+        filterParking === 'all'
+          ? true
+          : filterParking === 'yes'
+            ? record.hasPark
+            : !record.hasPark
+
+      const pingValue = Number(record.totalPing || 0)
+      const minPing = filterPingMin === '' ? null : Number(filterPingMin)
+      const maxPing = filterPingMax === '' ? null : Number(filterPingMax)
+      const matchesPing =
+        (minPing == null || pingValue >= minPing) &&
+        (maxPing == null || pingValue <= maxPing)
+
+      const floorNum = Number(record.floorNum || -999)
+      const matchesFloor =
+        filterFloorType === 'all'
+          ? true
+          : filterFloorType === 'low'
+            ? floorNum >= 0 && floorNum <= 5
+            : filterFloorType === 'mid'
+              ? floorNum >= 6 && floorNum <= 14
+              : floorNum >= 15
+
+      const matchesSpecial = includeSpecialSamples ? true : !record.isSpecialSample
+
+      return matchesRoom && matchesAge && matchesParking && matchesPing && matchesFloor && matchesSpecial
+    })
+  }, [
+    filterAgeRange,
+    filterFloorType,
+    filterPageBaseRecords,
+    filterParking,
+    filterPingMax,
+    filterPingMin,
+    filterRoomCount,
+    includeSpecialSamples,
+  ])
+
+  const filterPageSummary = useMemo(() => {
+    if (filterPageRecords.length === 0) {
+      return {
+        volume: 0,
+        medianPrice: 0,
+        medianTotalPrice: 0,
+        avgPing: 0,
+      }
+    }
+
+    const priceValues = filterPageRecords
+      .map((record) => Number(record.unitPricePing || 0))
+      .filter((price) => price > 0)
+    const totalPrices = filterPageRecords
+      .map((record) => (record.totalPrice > 0 ? record.totalPrice / 10000 : 0))
+      .filter((price) => price > 0)
+    const pingValues = filterPageRecords
+      .map((record) => Number(record.totalPing || 0))
+      .filter((ping) => ping > 0)
+
+    const median = (values) => {
+      if (values.length === 0) return 0
+      const sorted = [...values].sort((a, b) => a - b)
+      const middle = Math.floor(sorted.length / 2)
+      return sorted.length % 2 !== 0
+        ? sorted[middle]
+        : (sorted[middle - 1] + sorted[middle]) / 2
+    }
+
+    return {
+      volume: filterPageRecords.length,
+      medianPrice: Number(median(priceValues).toFixed(2)),
+      medianTotalPrice: totalPrices.length ? Math.round(median(totalPrices)) : 0,
+      avgPing: pingValues.length
+        ? Number((pingValues.reduce((sum, value) => sum + value, 0) / pingValues.length).toFixed(1))
+        : 0,
+    }
+  }, [filterPageRecords])
+
+  const filterPageTotalPriceDistribution = useMemo(
+    () => buildTotalPriceDistribution(filterPageRecords),
+    [filterPageRecords],
+  )
+
+  const filterPageUnitPriceDistribution = useMemo(
+    () => buildUnitPriceDistribution(filterPageRecords),
+    [filterPageRecords],
+  )
 
   const togglePropertyType = (type) => {
     setPropertyTypeFilter((previous) => {
@@ -440,6 +681,17 @@ export function useDashboardModel() {
     return buildProjectDetail(ranking.name, mockRecords)
   }
 
+  const getTransactionDetail = (recordKey) => {
+    if (!recordKey) return null
+
+    const source = allLoadedRecords.length > 0 ? allLoadedRecords : [
+      ...filterPageRecords,
+      ...districtAllRecords,
+    ]
+
+    return source.find((record) => record.key === recordKey) || null
+  }
+
   return {
     cityActiveTab,
     setCityActiveTab,
@@ -447,12 +699,28 @@ export function useDashboardModel() {
     setDistrictActiveTab,
     selectedDistrict,
     setSelectedDistrict,
+    filterDistrict,
+    setFilterDistrict,
     selectedLocation,
     setSelectedLocation,
     buyerScenario,
     setBuyerScenario,
     propertyTypeFilter,
     buildingFilter,
+    filterRoomCount,
+    setFilterRoomCount,
+    filterAgeRange,
+    setFilterAgeRange,
+    filterParking,
+    setFilterParking,
+    filterFloorType,
+    setFilterFloorType,
+    filterPingMin,
+    setFilterPingMin,
+    filterPingMax,
+    setFilterPingMax,
+    includeSpecialSamples,
+    setIncludeSpecialSamples,
     togglePropertyType,
     toggleBuildingType,
     isProcessing,
@@ -492,9 +760,24 @@ export function useDashboardModel() {
     selectedDistrictOverview,
     scenarioDistrictOverview,
     districtTotalPriceBand,
+    districtTotalPriceDistribution,
+    districtUnitPriceDistribution,
+    districtBuildingTypeMix,
+    productAnalysisSummary,
+    productTypeAnalysisRows,
+    buildingTypeAnalysisRows,
+    productPingDistribution,
+    productTotalPriceDistribution,
+    productUnitPriceDistribution,
+    filterPageRecords,
+    filterPageSummary,
+    filterPageTotalPriceDistribution,
+    filterPageUnitPriceDistribution,
+    regionalOverviewRows,
     valueProjects,
     minPrice,
     maxPrice,
     getProjectDetail,
+    getTransactionDetail,
   }
 }

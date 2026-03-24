@@ -225,6 +225,167 @@ export function buildAgeDistribution(records) {
     .filter((item) => item.volume > 0)
 }
 
+export function buildTotalPriceDistribution(records) {
+  const buckets = [
+    { name: '500萬以下', min: 0, max: 500 },
+    { name: '500-1000萬', min: 500, max: 1000 },
+    { name: '1000-1500萬', min: 1000, max: 1500 },
+    { name: '1500-2000萬', min: 1500, max: 2000 },
+    { name: '2000萬以上', min: 2000, max: Infinity },
+  ]
+
+  const counts = new Map(buckets.map((bucket) => [bucket.name, 0]))
+  records.forEach((record) => {
+    const totalPrice = record.totalPrice > 0 ? record.totalPrice / 10000 : 0
+    if (totalPrice <= 0) return
+    const bucket = buckets.find((item) => totalPrice >= item.min && totalPrice < item.max)
+    if (!bucket) return
+    counts.set(bucket.name, (counts.get(bucket.name) || 0) + 1)
+  })
+
+  return buckets
+    .map((bucket) => ({ name: bucket.name, value: counts.get(bucket.name) || 0 }))
+    .filter((item) => item.value > 0)
+}
+
+export function buildUnitPriceDistribution(records) {
+  const buckets = [
+    { name: '20萬以下', min: 0, max: 20 },
+    { name: '20-30萬', min: 20, max: 30 },
+    { name: '30-40萬', min: 30, max: 40 },
+    { name: '40-50萬', min: 40, max: 50 },
+    { name: '50萬以上', min: 50, max: Infinity },
+  ]
+
+  const counts = new Map(buckets.map((bucket) => [bucket.name, 0]))
+  records.forEach((record) => {
+    const unitPrice = Number(record.unitPricePing || 0)
+    if (unitPrice <= 0) return
+    const bucket = buckets.find((item) => unitPrice >= item.min && unitPrice < item.max)
+    if (!bucket) return
+    counts.set(bucket.name, (counts.get(bucket.name) || 0) + 1)
+  })
+
+  return buckets
+    .map((bucket) => ({ name: bucket.name, value: counts.get(bucket.name) || 0 }))
+    .filter((item) => item.value > 0)
+}
+
+export function buildBuildingTypeMix(records) {
+  const buckets = {
+    '大樓 / 華廈': 0,
+    公寓: 0,
+    透天: 0,
+    '店面 / 商辦': 0,
+    其他: 0,
+  }
+
+  records.forEach((record) => {
+    const buildType = record.buildType || ''
+    if (buildType.includes('大樓') || buildType.includes('華廈')) buckets['大樓 / 華廈'] += 1
+    else if (buildType.includes('公寓')) buckets['公寓'] += 1
+    else if (buildType.includes('透天')) buckets['透天'] += 1
+    else if (buildType.includes('店面') || buildType.includes('店鋪') || buildType.includes('商辦')) buckets['店面 / 商辦'] += 1
+    else buckets.其他 += 1
+  })
+
+  return Object.entries(buckets)
+    .map(([name, value]) => ({ name, value }))
+    .filter((item) => item.value > 0)
+}
+
+function getBuildingCategory(buildType = '') {
+  if (buildType.includes('大樓') || buildType.includes('華廈')) return '大樓 / 華廈'
+  if (buildType.includes('公寓')) return '公寓'
+  if (buildType.includes('透天')) return '透天'
+  if (buildType.includes('店面') || buildType.includes('店鋪') || buildType.includes('商辦')) {
+    return '店面 / 商辦'
+  }
+  return '其他'
+}
+
+function summarizeAnalysisGroup(records) {
+  const totalPrices = records
+    .map((record) => (record.totalPrice > 0 ? record.totalPrice / 10000 : 0))
+    .filter((price) => price > 0)
+  const unitPrices = records
+    .map((record) => Number(record.unitPricePing || 0))
+    .filter((price) => price > 0)
+  const pings = records
+    .map((record) => Number(record.totalPing || 0))
+    .filter((ping) => ping > 0)
+
+  return {
+    volume: records.length,
+    medianTotalPrice: totalPrices.length ? Number(getMedian(totalPrices).toFixed(0)) : 0,
+    medianUnitPrice: unitPrices.length ? Number(getMedian(unitPrices).toFixed(2)) : 0,
+    avgPing: pings.length ? Number((sum(pings) / pings.length).toFixed(1)) : 0,
+  }
+}
+
+export function buildProductTypeAnalysis(records) {
+  const buckets = {
+    中古屋: [],
+    預售屋: [],
+  }
+
+  records.forEach((record) => {
+    const key = record.type === 'presale' ? '預售屋' : '中古屋'
+    buckets[key].push(record)
+  })
+
+  return Object.entries(buckets)
+    .map(([name, items]) => ({
+      name,
+      ...summarizeAnalysisGroup(items),
+    }))
+    .filter((item) => item.volume > 0)
+}
+
+export function buildBuildingTypeAnalysis(records) {
+  const buckets = {
+    '大樓 / 華廈': [],
+    公寓: [],
+    透天: [],
+    '店面 / 商辦': [],
+    其他: [],
+  }
+
+  records.forEach((record) => {
+    buckets[getBuildingCategory(record.buildType || '')].push(record)
+  })
+
+  return Object.entries(buckets)
+    .map(([name, items]) => ({
+      name,
+      ...summarizeAnalysisGroup(items),
+    }))
+    .filter((item) => item.volume > 0)
+}
+
+export function buildPingDistribution(records) {
+  const buckets = [
+    { name: '20坪以下', min: 0, max: 20 },
+    { name: '20-30坪', min: 20, max: 30 },
+    { name: '30-40坪', min: 30, max: 40 },
+    { name: '40-50坪', min: 40, max: 50 },
+    { name: '50坪以上', min: 50, max: Infinity },
+  ]
+
+  const counts = new Map(buckets.map((bucket) => [bucket.name, 0]))
+  records.forEach((record) => {
+    const ping = Number(record.totalPing || 0)
+    if (ping <= 0) return
+    const bucket = buckets.find((item) => ping >= item.min && ping < item.max)
+    if (!bucket) return
+    counts.set(bucket.name, (counts.get(bucket.name) || 0) + 1)
+  })
+
+  return buckets
+    .map((bucket) => ({ name: bucket.name, value: counts.get(bucket.name) || 0 }))
+    .filter((item) => item.value > 0)
+}
+
 export function buildRankings(records) {
   const groups = {}
   records.forEach((record) => {

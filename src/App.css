@@ -193,6 +193,25 @@
   gap: 10px;
 }
 
+.range-input-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.range-input-row input {
+  min-width: 140px;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(130, 101, 69, 0.18);
+  background: #fffdf8;
+  color: #5a4837;
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .chip {
   min-height: 38px;
   padding: 0 14px;

@@ -140,10 +140,7 @@ export function parseCSVText(text, filePropertyType, existingKeysArray = []) {
     const isStoreType =
       buildTypeRaw.includes('店面') || buildTypeRaw.includes('店鋪') || buildTypeRaw.includes('商辦')
 
-    if (noteRaw && noteRaw.match(/(親友|員工|特殊|毛胚|瑕疵|凶宅|增建|地上權|工業|關係人|協議|塔位)/)) {
-      filterCount += 1
-      continue
-    }
+    const specialMatch = noteRaw.match(/(親友|員工|特殊|毛胚|瑕疵|凶宅|增建|地上權|工業|關係人|協議|塔位)/)
 
     if (
       !isStoreType &&
@@ -253,6 +250,9 @@ export function parseCSVText(text, filePropertyType, existingKeysArray = []) {
       level: levelRaw,
       floorNum,
       totalPrice,
+      note: noteRaw,
+      isSpecialSample: Boolean(specialMatch),
+      specialReason: specialMatch ? specialMatch[0] : '',
       landPing: Number(landPing.toFixed(2)),
       parkAreaPing: Number((parkArea * 0.3025).toFixed(2)),
       hasPark: parkArea > 0 || parkPrice > 0,

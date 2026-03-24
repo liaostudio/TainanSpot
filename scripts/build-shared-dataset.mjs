@@ -94,8 +94,17 @@ function slimRecord(record) {
     age: record.age,
     roomCount: record.roomCount,
     totalPing: record.totalPing,
+    address: record.address,
     level: record.level,
+    landPing: record.landPing,
     totalPrice: record.totalPrice,
+    note: record.note,
+    isSpecialSample: record.isSpecialSample,
+    specialReason: record.specialReason,
+    hasPark: record.hasPark,
+    parkAreaPing: record.parkAreaPing,
+    parkPrice: record.parkPrice,
+    floorNum: record.floorNum,
   }
 }
 
