@@ -275,12 +275,8 @@ function HomePage({ model, onJump, onOpenProject }) {
   )
 }
 
-function DistrictPage({ model, onJump, onOpenProject }) {
+function DistrictPage({ model, onJump }) {
   const roomMixItems = model.scenarioRoomMix.map((item) => ({
-    name: item.name,
-    value: `${item.value} 筆`,
-  }))
-  const typeMixItems = model.scenarioTypeMix.map((item) => ({
     name: item.name,
     value: `${item.value} 筆`,
   }))
@@ -306,32 +302,12 @@ function DistrictPage({ model, onJump, onOpenProject }) {
         </label>
       </section>
 
-      <section className="panel scenario-panel">
-        <div className="panel-head compact">
-          <div>
-            <h3>分析條件</h3>
-            <p>切換首購或換屋，下面的價格、總價和社區排行會一起更新。</p>
-          </div>
-        </div>
-        <div className="chip-row">
-          <button type="button" className={model.buyerScenario === 'all' ? 'chip active' : 'chip'} onClick={() => model.setBuyerScenario('all')}>
-            我先看全部
-          </button>
-          <button type="button" className={model.buyerScenario === 'starter' ? 'chip active' : 'chip'} onClick={() => model.setBuyerScenario('starter')}>
-            我是首購（看 1-2 房）
-          </button>
-          <button type="button" className={model.buyerScenario === 'upgrade' ? 'chip active' : 'chip'} onClick={() => model.setBuyerScenario('upgrade')}>
-            我是換屋（看 3-4 房）
-          </button>
-        </div>
-      </section>
-
       <div className="metric-grid">
         <MetricCard label="區域平均價格" value={`${formatPrice(model.scenarioDistrictOverview?.price)} 萬/坪`} helper="先看這區大概價格" accent="blue" />
         <MetricCard label="區域趨勢方向" value={<TrendBadge value={model.scenarioDistrictOverview?.yoy} />} helper="快速看最近漲跌" accent="amber" />
         <MetricCard label="主流總價帶" value={model.districtTotalPriceBand.label} helper="大多數買方大概落在這個區間" accent="slate" />
         <MetricCard label="區域成交筆數" value={`${model.scenarioDistrictOverview?.volume ?? '-'} 筆`} helper="筆數越多，代表這區越熱" accent="slate" />
-        <MetricCard label="區域一句話判讀" value={model.insights.health} helper={`${model.insights.structure} / ${model.insights.momentum}`} accent="green" />
+        <MetricCard label="主力房型" value={model.scenarioRoomMix[0]?.name ?? '-'} helper="先看這區主要成交哪一種房型" accent="green" />
       </div>
 
       <section className="dashboard-grid">
@@ -352,54 +328,6 @@ function DistrictPage({ model, onJump, onOpenProject }) {
         </ChartCard>
 
         <DataBreakdownCard title="區域房型分布" subtitle="直接看成交數量，不用圓餅圖。" items={roomMixItems} />
-      </section>
-
-      <section className="dashboard-grid">
-        <section className="panel simple-list-panel">
-          <div className="panel-head">
-            <div>
-              <h3>區域社區成交排行</h3>
-              <p>先從成交最活躍的社區開始看，最容易抓到區域主流行情。</p>
-            </div>
-          </div>
-          <div className="simple-list">
-            {model.scenarioRankings.map((project) => (
-              <button key={project.name} type="button" className="simple-list-item" onClick={() => onOpenProject(project.name)}>
-                <div>
-                  <strong>{project.name}</strong>
-                  <p>{project.type} / 主流總價 {project.totalPriceBandLabel}</p>
-                </div>
-                <span>{formatPrice(project.medianPrice)} 萬/坪</span>
-              </button>
-            ))}
-          </div>
-        </section>
-
-        <section className="panel simple-list-panel">
-          <div className="panel-head">
-            <div>
-              <h3>高性價比社區</h3>
-              <p>成交穩定、價格比本區平均更親切的社區，適合先拿來比較判斷。</p>
-            </div>
-          </div>
-          <div className="simple-list">
-            {model.valueProjects.length > 0 ? (
-              model.valueProjects.map((project) => (
-                <button key={project.name} type="button" className="simple-list-item" onClick={() => onOpenProject(project.name)}>
-                  <div>
-                    <strong>{project.name}</strong>
-                    <p>{project.volume} 筆成交 / 主流總價 {project.totalPriceBandLabel}</p>
-                  </div>
-                  <span>{formatPrice(project.medianPrice)} 萬/坪</span>
-                </button>
-              ))
-            ) : (
-              <div className="empty-state">目前這個條件下，還沒有特別明顯的高 CP 值社區。</div>
-            )}
-          </div>
-        </section>
-
-        <DataBreakdownCard title="區域產品分布" subtitle="看這一區目前主要成交的是中古屋還是預售屋。" items={typeMixItems} />
       </section>
 
       <section className="district-cta-row">
@@ -538,7 +466,7 @@ export function TainanSite() {
         </section>
 
         <section id="district">
-          <DistrictPage model={model} onJump={scrollToSection} onOpenProject={openProject} />
+          <DistrictPage model={model} onJump={scrollToSection} />
         </section>
 
         <section id="community" className="single-page-section">
