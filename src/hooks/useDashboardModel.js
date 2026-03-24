@@ -306,9 +306,16 @@ export function useDashboardModel() {
     [scenarioDistrictRecords, selectedDistrictOverview],
   )
 
+  const scenarioResidentialRecords = useMemo(() => {
+    const filtered = scenarioDistrictRecords.filter(
+      (record) => !(record.buildType || '').match(/店面|店鋪|商辦|辦公商業大樓|廠辦|透天/),
+    )
+    return filtered.length > 0 ? filtered : scenarioDistrictRecords
+  }, [scenarioDistrictRecords])
+
   const districtTotalPriceBand = useMemo(
-    () => buildTotalPriceBand(scenarioDistrictRecords),
-    [scenarioDistrictRecords],
+    () => buildTotalPriceBand(scenarioResidentialRecords),
+    [scenarioResidentialRecords],
   )
 
   const valueProjects = useMemo(
