@@ -91,6 +91,10 @@ export function useDashboardModel() {
     () => recordsByDistrict.get(selectedDistrict) ?? [],
     [recordsByDistrict, selectedDistrict],
   )
+  const isSelectedDistrictLoaded = useMemo(
+    () => recordsByDistrict.has(selectedDistrict),
+    [recordsByDistrict, selectedDistrict],
+  )
 
   const districtAllRecords = useMemo(
     () => (isRealMode ? loadedSelectedDistrictRecords : []),
@@ -211,7 +215,7 @@ export function useDashboardModel() {
         return withMovingAverage(processTrendData(scenarioDistrictRecords, districtActiveTab))
       }
 
-      if (isRealMode) return []
+      if (isRealMode && isSelectedDistrictLoaded) return []
 
       return (
         districtMeta?.trendByTab?.[districtActiveTab] ||
@@ -219,7 +223,7 @@ export function useDashboardModel() {
         districtData.trend['1y']
       )
     },
-    [districtActiveTab, districtData, districtMeta?.trendByTab, isRealMode, scenarioDistrictRecords],
+    [districtActiveTab, districtData, districtMeta?.trendByTab, isRealMode, isSelectedDistrictLoaded, scenarioDistrictRecords],
   )
 
   const ageDistribution = useMemo(
@@ -241,10 +245,10 @@ export function useDashboardModel() {
   const scenarioRankings = useMemo(
     () => {
       if (scenarioDistrictRecords.length > 0) return buildRankings(scenarioDistrictRecords)
-      if (isRealMode) return []
+      if (isRealMode && isSelectedDistrictLoaded) return []
       return districtMeta?.rankings || districtData.rankings
     },
-    [districtData.rankings, districtMeta?.rankings, isRealMode, scenarioDistrictRecords],
+    [districtData.rankings, districtMeta?.rankings, isRealMode, isSelectedDistrictLoaded, scenarioDistrictRecords],
   )
 
   const insights = useMemo(
@@ -271,7 +275,7 @@ export function useDashboardModel() {
   const scenarioRoomMix = useMemo(
     () => {
       if (scenarioDistrictRecords.length > 0) return buildRoomLayout(scenarioDistrictRecords)
-      if (isRealMode) return []
+      if (isRealMode && isSelectedDistrictLoaded) return []
       return districtMeta?.roomMix || [
         { name: '2房', value: 45 },
         { name: '3房', value: 33 },
@@ -279,7 +283,7 @@ export function useDashboardModel() {
         { name: '4房以上', value: 10 },
       ]
     },
-    [districtMeta?.roomMix, isRealMode, scenarioDistrictRecords],
+    [districtMeta?.roomMix, isRealMode, isSelectedDistrictLoaded, scenarioDistrictRecords],
   )
 
   const typeMix = useMemo(
@@ -296,13 +300,13 @@ export function useDashboardModel() {
   const scenarioTypeMix = useMemo(
     () => {
       if (scenarioDistrictRecords.length > 0) return buildPropertyTypeMix(scenarioDistrictRecords)
-      if (isRealMode) return []
+      if (isRealMode && isSelectedDistrictLoaded) return []
       return districtMeta?.typeMix || [
         { name: '中古屋', value: 65 },
         { name: '預售屋', value: 35 },
       ]
     },
-    [districtMeta?.typeMix, isRealMode, scenarioDistrictRecords],
+    [districtMeta?.typeMix, isRealMode, isSelectedDistrictLoaded, scenarioDistrictRecords],
   )
 
   const comparisonData = useMemo(() => {
@@ -332,7 +336,7 @@ export function useDashboardModel() {
         return summarizeDistrictRecords(scenarioDistrictRecords)
       }
 
-      if (isRealMode) {
+      if (isRealMode && isSelectedDistrictLoaded) {
         return {
           price: 0,
           yoy: 0,
@@ -342,7 +346,7 @@ export function useDashboardModel() {
 
       return selectedDistrictOverview
     },
-    [isRealMode, scenarioDistrictRecords, selectedDistrictOverview],
+    [isRealMode, isSelectedDistrictLoaded, scenarioDistrictRecords, selectedDistrictOverview],
   )
 
   const scenarioResidentialRecords = useMemo(() => {
