@@ -1,9 +1,6 @@
 import { useMemo, useState } from 'react'
 import {
-  BarChart3,
   Building2,
-  FileText,
-  Layers3,
   MapPinned,
   Search,
 } from 'lucide-react'
@@ -31,10 +28,8 @@ import { formatPrice, heatColor } from '../utils/dashboard.js'
 const navItems = [
   { id: 'home', label: '首頁', icon: Building2 },
   { id: 'regional', label: '區域總覽', icon: MapPinned },
-  { id: 'land', label: '土地交易分析', icon: BarChart3 },
-  { id: 'product', label: '產品類型分析', icon: Layers3 },
   { id: 'filters', label: '條件篩選', icon: Search },
-  { id: 'about', label: '資料說明', icon: FileText },
+  { id: 'detail', label: '成交明細', icon: Search },
 ]
 
 function scrollToSection(id) {
@@ -48,7 +43,7 @@ function getTimeRangeLabel(timeTab) {
   return '10 年'
 }
 
-function SiteHeader({ onOpenLandAnalysis }) {
+function SiteHeader() {
   return (
     <header className="rebuild-header">
       <div className="rebuild-header-inner">
@@ -64,13 +59,7 @@ function SiteHeader({ onOpenLandAnalysis }) {
                 key={item.id}
                 type="button"
                 className="rebuild-nav-link"
-                onClick={() => {
-                  if (item.id === 'land') {
-                    onOpenLandAnalysis()
-                    return
-                  }
-                  scrollToSection(item.id)
-                }}
+                onClick={() => scrollToSection(item.id)}
               >
                 <Icon size={15} />
                 <span>{item.label}</span>
@@ -107,7 +96,7 @@ function ModuleEntryCard({ title, text, onClick }) {
   )
 }
 
-function HomeSection({ model, onOpenLandAnalysis }) {
+function HomeSection({ model }) {
   const quickDistricts = model.availableDistricts.slice(0, 8)
   const homeStats = [
     {
@@ -171,10 +160,8 @@ function HomeSection({ model, onOpenLandAnalysis }) {
         </div>
       </section>
 
-      <section className="rebuild-grid-3">
+      <section className="rebuild-grid-2">
         <ModuleEntryCard title="區域總覽" text="比較各行政區成交件數、總價與單價輪廓，再進單區分析。" onClick={() => scrollToSection('regional')} />
-        <ModuleEntryCard title="土地交易分析" text="直接進入土地成交件數、總價、單價、面積與各區比較。" onClick={onOpenLandAnalysis} />
-        <ModuleEntryCard title="產品類型分析" text="先分開看土地、建物、房地，再比較產品類型與建物型態。" onClick={() => scrollToSection('product')} />
         <ModuleEntryCard title="條件篩選" text="用區域、產品、坪數、屋齡、樓層與車位條件找出接近需求的樣本。" onClick={() => scrollToSection('filters')} />
       </section>
 
@@ -184,7 +171,7 @@ function HomeSection({ model, onOpenLandAnalysis }) {
           subtitle="以下都直接來自已匯入的實價登錄欄位，不另外加入外部資料。"
           items={[
             { name: '區域', value: '行政區 / 鄉鎮市區' },
-            { name: '產品', value: '交易標的 / 產品類型 / 建物型態' },
+            { name: '產品', value: '交易標的 / 建物型態' },
             { name: '空間', value: '坪數 / 屋齡 / 格局 / 樓層 / 車位' },
             { name: '價格', value: '總價 / 單價 / 成交件數' },
             { name: '提醒', value: '備註 / 特殊樣本標示' },
@@ -228,38 +215,6 @@ function RegionalSection({ model }) {
     .filter((row) => row.price > 0)
     .sort((a, b) => b.price - a.price)
     .slice(0, 12)
-  const districtTotalPriceDistributionRows = useMemo(() => {
-    const buckets = [
-      { name: '800萬以下', min: 0, max: 800 },
-      { name: '800-1200萬', min: 800, max: 1200 },
-      { name: '1200-1600萬', min: 1200, max: 1600 },
-      { name: '1600-2000萬', min: 1600, max: 2000 },
-      { name: '2000萬以上', min: 2000, max: Infinity },
-    ]
-
-    return buckets.map((bucket) => ({
-      name: bucket.name,
-      value: model.regionalOverviewRows.filter(
-        (row) => row.medianTotalPrice >= bucket.min && row.medianTotalPrice < bucket.max,
-      ).length,
-    }))
-  }, [model.regionalOverviewRows])
-  const districtUnitPriceDistributionRows = useMemo(() => {
-    const buckets = [
-      { name: '20萬以下', min: 0, max: 20 },
-      { name: '20-30萬', min: 20, max: 30 },
-      { name: '30-40萬', min: 30, max: 40 },
-      { name: '40-50萬', min: 40, max: 50 },
-      { name: '50萬以上', min: 50, max: Infinity },
-    ]
-
-    return buckets.map((bucket) => ({
-      name: bucket.name,
-      value: model.regionalOverviewRows.filter(
-        (row) => row.price >= bucket.min && row.price < bucket.max,
-      ).length,
-    }))
-  }, [model.regionalOverviewRows])
 
   return (
     <div className="rebuild-stack">
@@ -342,63 +297,67 @@ function RegionalSection({ model }) {
       </ChartCard>
 
       <section className="rebuild-grid-2">
-        <ChartCard title="各區總價分布" subtitle="先看目前有多少行政區落在不同的中位數總價帶。">
-          <div className="chart-wrap medium">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={districtTotalPriceDistributionRows} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e7e0d6" />
-                <XAxis dataKey="name" tickLine={false} axisLine={false} />
-                <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
-                <Tooltip formatter={(value) => [`${Number(value)} 區`, '行政區數']} />
-                <Bar dataKey="value" fill="#d8a55a" radius={[8, 8, 0, 0]} isAnimationActive={false} />
-              </BarChart>
-            </ResponsiveContainer>
+        <section className="panel">
+          <div className="panel-head">
+            <div>
+              <h3>各區中位數總價比較</h3>
+              <p>依目前條件下最新年度成交樣本，直接看各區主流成交總價排名。</p>
+            </div>
           </div>
-        </ChartCard>
+          <div className="table-shell">
+            <table className="records-table">
+              <thead>
+                <tr>
+                  <th>排名</th>
+                  <th>行政區</th>
+                  <th>中位數總價</th>
+                  <th>成交件數</th>
+                </tr>
+              </thead>
+              <tbody>
+                {totalPriceChartRows.map((row, index) => (
+                  <tr key={row.district}>
+                    <td>{index + 1}</td>
+                    <td>{row.district}</td>
+                    <td>{row.medianTotalPrice.toLocaleString()} 萬</td>
+                    <td>{row.volume.toLocaleString()} 筆</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
 
-        <ChartCard title="各區單價分布" subtitle="再看目前有多少行政區落在不同的單價中位數區間。">
-          <div className="chart-wrap medium">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={districtUnitPriceDistributionRows} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e7e0d6" />
-                <XAxis dataKey="name" tickLine={false} axisLine={false} />
-                <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
-                <Tooltip formatter={(value) => [`${Number(value)} 區`, '行政區數']} />
-                <Bar dataKey="value" fill="#4a77d4" radius={[8, 8, 0, 0]} isAnimationActive={false} />
-              </BarChart>
-            </ResponsiveContainer>
+        <section className="panel">
+          <div className="panel-head">
+            <div>
+              <h3>各區單價中位數比較</h3>
+              <p>依目前條件下最新年度成交樣本，直接看各區常見單價排名。</p>
+            </div>
           </div>
-        </ChartCard>
-      </section>
-
-      <section className="rebuild-grid-2">
-        <ChartCard title="各區中位數總價比較" subtitle="依目前條件下最新年度成交樣本，比較各區主流成交總價。">
-          <div className="chart-wrap medium">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={totalPriceChartRows} layout="vertical" margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e7e0d6" />
-                <XAxis type="number" tickLine={false} axisLine={false} />
-                <YAxis dataKey="district" type="category" width={64} tickLine={false} axisLine={false} />
-                <Tooltip formatter={(value) => [`${Number(value).toLocaleString()} 萬`, '中位數總價']} />
-                <Bar dataKey="medianTotalPrice" fill="#c99041" radius={[0, 8, 8, 0]} isAnimationActive={false} />
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="table-shell">
+            <table className="records-table">
+              <thead>
+                <tr>
+                  <th>排名</th>
+                  <th>行政區</th>
+                  <th>單價中位數</th>
+                  <th>成交件數</th>
+                </tr>
+              </thead>
+              <tbody>
+                {unitPriceChartRows.map((row, index) => (
+                  <tr key={row.district}>
+                    <td>{index + 1}</td>
+                    <td>{row.district}</td>
+                    <td>{formatPrice(row.price)} 萬/坪</td>
+                    <td>{row.volume.toLocaleString()} 筆</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </ChartCard>
-
-        <ChartCard title="各區單價中位數比較" subtitle="依目前條件下最新年度成交樣本，比較各區常見單價位置。">
-          <div className="chart-wrap medium">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={unitPriceChartRows} layout="vertical" margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e7e0d6" />
-                <XAxis type="number" tickLine={false} axisLine={false} />
-                <YAxis dataKey="district" type="category" width={64} tickLine={false} axisLine={false} />
-                <Tooltip formatter={(value) => [`${formatPrice(value)} 萬/坪`, '單價中位數']} />
-                <Bar dataKey="price" fill="#2155c8" radius={[0, 8, 8, 0]} isAnimationActive={false} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </ChartCard>
+        </section>
       </section>
 
       <section className="panel">
@@ -470,181 +429,6 @@ function RegionalSection({ model }) {
           )}
         </div>
       </ChartCard>
-    </div>
-  )
-}
-
-function ProductSection({ model, productSubview, setProductSubview }) {
-  const tradeTargets =
-    model.tradeTargetFilter.includes('all') ? ['全部交易標的'] : model.tradeTargetFilter
-
-  return (
-    <div className="rebuild-stack">
-      <SectionIntro
-        eyebrow="產品類型分析"
-        title="先分開產品，再比較價格"
-        description="先選土地交易分析或建物 / 房地分析，再看分布、再看中位數與比較表。除特別註明外，以下統計皆依目前條件下全期間成交樣本計算。"
-      />
-
-      <section className="panel">
-        <div className="panel-head">
-          <div>
-            <h3>分析子模組</h3>
-            <p>土地與建物不直接混比，先分路徑再分析。</p>
-          </div>
-        </div>
-        <div className="analysis-subnav">
-          <button type="button" className={productSubview === 'land' ? 'analysis-subnav-button is-active' : 'analysis-subnav-button'} onClick={() => setProductSubview('land')}>
-            <strong>土地交易分析</strong>
-            <span>土地成交件數、總價、單價、土地坪數與各區比較</span>
-          </button>
-          <button type="button" className={productSubview === 'building' ? 'analysis-subnav-button is-active' : 'analysis-subnav-button'} onClick={() => setProductSubview('building')}>
-            <strong>建物 / 房地分析</strong>
-            <span>交易標的、產品類型、建物型態與價格分布</span>
-          </button>
-        </div>
-      </section>
-
-      <section className="panel">
-        <div className="panel-head">
-          <div>
-            <h3>產品分析條件</h3>
-            <p>交易標的會決定下面是走土地口徑還是建物口徑。</p>
-          </div>
-        </div>
-        <div className="rebuild-filter-grid">
-          <div>
-            <span className="filter-label">交易標的</span>
-            <div className="chip-row">
-              <button type="button" className={model.tradeTargetFilter.includes('all') ? 'chip active' : 'chip'} onClick={() => model.toggleTradeTarget('all')}>全部</button>
-              {Object.entries(tradeTargetLabels).map(([key, label]) => (
-                <button key={key} type="button" className={model.tradeTargetFilter.includes(key) ? 'chip active' : 'chip'} onClick={() => model.toggleTradeTarget(key)}>
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-          {!model.isLandOnlyMode && (
-            <>
-              <div>
-                <span className="filter-label">產品類型</span>
-                <div className="chip-row">
-                  <button type="button" className={model.propertyTypeFilter.includes('existing') ? 'chip active' : 'chip'} onClick={() => model.togglePropertyType('existing')}>中古屋</button>
-                  <button type="button" className={model.propertyTypeFilter.includes('presale') ? 'chip active' : 'chip'} onClick={() => model.togglePropertyType('presale')}>預售屋</button>
-                </div>
-              </div>
-              <div>
-                <span className="filter-label">建物型態</span>
-                <div className="chip-row">
-                  {Object.entries(buildingTypeLabels).map(([key, label]) => (
-                    <button key={key} type="button" className={model.buildingFilter.includes(key) ? 'chip active' : 'chip'} onClick={() => model.toggleBuildingType(key)}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-        <div className="panel-inline-hint">
-          <HintBadge text={`目前已套用交易標的：${tradeTargets.join(' / ')}。`} />
-        </div>
-      </section>
-
-      {productSubview === 'land' ? (
-        <>
-          <section className="rebuild-grid-3">
-            <DataBreakdownCard title={<><span>土地總價分布</span><SampleStatusTag includeSpecialSamples={model.includeSpecialSamples} /></>} subtitle="先看土地成交總價主要落在哪些區間。" items={model.landPriceDistribution.map((item) => ({ name: item.name, value: `${item.value} 筆` }))} />
-            <DataBreakdownCard title={<><span>土地單價分布</span><SampleStatusTag includeSpecialSamples={model.includeSpecialSamples} /></>} subtitle="再看土地單價主要落在哪些區間。" items={model.landUnitPriceDistribution.map((item) => ({ name: item.name, value: `${item.value} 筆` }))} />
-            <DataBreakdownCard title={<><span>土地面積分布</span><SampleStatusTag includeSpecialSamples={model.includeSpecialSamples} /></>} subtitle="最後看土地坪數主要落在哪些範圍。" items={model.landPingDistribution.map((item) => ({ name: item.name, value: `${item.value} 筆` }))} />
-          </section>
-
-          <div className="metric-grid">
-            <MetricCard label="土地成交件數" value={`${model.landAnalysisSummary.volume.toLocaleString()} 筆`} helper="依目前條件下全期間土地成交樣本統計" accent="blue" showHint={false} />
-            <MetricCard label="土地總價中位數" value={model.landAnalysisSummary.medianTotalPrice > 0 ? `${model.landAnalysisSummary.medianTotalPrice} 萬` : '-'} helper="依目前條件下全期間土地成交樣本統計" accent="amber" showHint={false} />
-            <MetricCard label="土地單價中位數" value={model.landAnalysisSummary.medianUnitPrice > 0 ? `${formatPrice(model.landAnalysisSummary.medianUnitPrice)} 萬/坪` : '-'} helper="依目前條件下全期間土地成交樣本統計" accent="slate" showHint={false} />
-            <MetricCard label="平均土地坪數" value={model.landAnalysisSummary.avgPing > 0 ? `${model.landAnalysisSummary.avgPing} 坪` : '-'} helper="依目前條件下全期間土地成交樣本統計" accent="green" showHint={false} />
-          </div>
-
-      <section className="panel">
-        <div className="panel-head">
-          <div>
-            <h3>各行政區土地比較</h3>
-            <p>分布看完之後，再回來比較各區土地成交位置。</p>
-              </div>
-            </div>
-            <div className="table-shell">
-              <table className="records-table">
-                <thead>
-                  <tr>
-                    <th>行政區</th>
-                    <th>成交件數</th>
-                    <th>總價中位數</th>
-                    <th>單價中位數</th>
-                    <th>平均土地坪數</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {model.landDistrictRows.map((row) => (
-                    <tr key={row.district}>
-                      <td>{row.district}</td>
-                      <td>{row.volume.toLocaleString()} 筆</td>
-                      <td>{row.medianTotalPrice > 0 ? `${row.medianTotalPrice} 萬` : '-'}</td>
-                      <td>{row.medianUnitPrice > 0 ? `${formatPrice(row.medianUnitPrice)} 萬/坪` : '-'}</td>
-                      <td>{row.avgPing > 0 ? `${row.avgPing} 坪` : '-'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        </>
-      ) : (
-        <>
-          <section className="rebuild-grid-3">
-            <DataBreakdownCard title={<><span>坪數分布</span><SampleStatusTag includeSpecialSamples={model.includeSpecialSamples} /></>} subtitle="先看樣本主要落在哪些坪數帶。" items={model.productPingDistribution.map((item) => ({ name: item.name, value: `${item.value} 筆` }))} />
-            <DataBreakdownCard title={<><span>總價分布</span><SampleStatusTag includeSpecialSamples={model.includeSpecialSamples} /></>} subtitle="再看樣本主要落在哪些總價帶。" items={model.productTotalPriceDistribution.map((item) => ({ name: item.name, value: `${item.value} 筆` }))} />
-            <DataBreakdownCard title={<><span>單價分布</span><SampleStatusTag includeSpecialSamples={model.includeSpecialSamples} /></>} subtitle="最後看樣本主要落在哪些單價帶。" items={model.productUnitPriceDistribution.map((item) => ({ name: item.name, value: `${item.value} 筆` }))} />
-          </section>
-
-          <div className="metric-grid">
-            <MetricCard label="成交件數" value={`${model.productAnalysisSummary.volume.toLocaleString()} 筆`} helper="依目前條件下全期間成交樣本統計" accent="blue" showHint={false} />
-            <MetricCard label="總價中位數" value={model.productAnalysisSummary.medianTotalPrice > 0 ? `${model.productAnalysisSummary.medianTotalPrice} 萬` : '-'} helper="依目前條件下全期間成交樣本統計" accent="amber" showHint={false} />
-            <MetricCard label="單價中位數" value={model.productAnalysisSummary.medianUnitPrice > 0 ? `${formatPrice(model.productAnalysisSummary.medianUnitPrice)} 萬/坪` : '-'} helper="依目前條件下全期間成交樣本統計" accent="slate" showHint={false} />
-            <MetricCard label="平均建坪" value={model.productAnalysisSummary.avgPing > 0 ? `${model.productAnalysisSummary.avgPing} 坪` : '-'} helper="依目前條件下全期間成交樣本統計" accent="green" showHint={false} />
-          </div>
-
-          <section className="rebuild-grid-3">
-            <section className="panel">
-              <div className="panel-head"><div><h3>交易標的比較</h3><p>再比較不同交易標的的成交位置。</p></div></div>
-              <div className="table-shell">
-                <table className="records-table">
-                  <thead><tr><th>交易標的</th><th>成交件數</th><th>總價中位數</th><th>單價中位數</th><th>平均面積</th></tr></thead>
-                  <tbody>{model.tradeTargetAnalysisRows.map((row) => <tr key={row.name}><td>{row.name}</td><td>{row.volume.toLocaleString()} 筆</td><td>{row.medianTotalPrice > 0 ? `${row.medianTotalPrice} 萬` : '-'}</td><td>{row.medianUnitPrice > 0 ? `${formatPrice(row.medianUnitPrice)} 萬/坪` : '-'}</td><td>{row.avgPing > 0 ? `${row.avgPing} 坪` : '-'}</td></tr>)}</tbody>
-                </table>
-              </div>
-            </section>
-            <section className="panel">
-              <div className="panel-head"><div><h3>產品類型比較</h3><p>再比較中古屋與預售屋的成交位置。</p></div></div>
-              <div className="table-shell">
-                <table className="records-table">
-                  <thead><tr><th>產品類型</th><th>成交件數</th><th>總價中位數</th><th>單價中位數</th><th>平均建坪</th></tr></thead>
-                  <tbody>{model.productTypeAnalysisRows.map((row) => <tr key={row.name}><td>{row.name}</td><td>{row.volume.toLocaleString()} 筆</td><td>{row.medianTotalPrice > 0 ? `${row.medianTotalPrice} 萬` : '-'}</td><td>{row.medianUnitPrice > 0 ? `${formatPrice(row.medianUnitPrice)} 萬/坪` : '-'}</td><td>{row.avgPing > 0 ? `${row.avgPing} 坪` : '-'}</td></tr>)}</tbody>
-                </table>
-              </div>
-            </section>
-            <section className="panel">
-              <div className="panel-head"><div><h3>建物型態比較</h3><p>最後比較大樓、公寓、透天等型態差異。</p></div></div>
-              <div className="table-shell">
-                <table className="records-table">
-                  <thead><tr><th>建物型態</th><th>成交件數</th><th>總價中位數</th><th>單價中位數</th><th>平均建坪</th></tr></thead>
-                  <tbody>{model.buildingTypeAnalysisRows.map((row) => <tr key={row.name}><td>{row.name}</td><td>{row.volume.toLocaleString()} 筆</td><td>{row.medianTotalPrice > 0 ? `${row.medianTotalPrice} 萬` : '-'}</td><td>{row.medianUnitPrice > 0 ? `${formatPrice(row.medianUnitPrice)} 萬/坪` : '-'}</td><td>{row.avgPing > 0 ? `${row.avgPing} 坪` : '-'}</td></tr>)}</tbody>
-                </table>
-              </div>
-            </section>
-          </section>
-        </>
-      )}
     </div>
   )
 }
@@ -949,44 +733,10 @@ function DetailSection({ record, onPrev, onNext, hasPrev, hasNext, onBack }) {
   )
 }
 
-function AboutSection() {
-  return (
-    <div className="rebuild-stack">
-      <SectionIntro
-        eyebrow="資料說明"
-        title="資料方法與限制"
-        description="本網站只依已匯入的實價登錄 CSV 欄位分析，不另外加入學區、交通、開價、議價率或其他外部資料。"
-      />
-      <section className="rebuild-grid-2">
-        <DataBreakdownCard title="可分析欄位" subtitle="本階段只用目前 CSV 真正有的欄位。" items={[
-          { name: '區域', value: '鄉鎮市區' },
-          { name: '交易', value: '交易標的 / 交易年月日' },
-          { name: '建物', value: '建物型態 / 樓層 / 屋齡 / 格局' },
-          { name: '價格', value: '總價 / 單價 / 面積' },
-          { name: '補充', value: '車位資訊 / 備註 / 建案名稱' },
-        ]} />
-        <DataBreakdownCard title="資料清理原則" subtitle="讓分析結果更穩定的基本清理流程。" items={[
-          { name: '格式統一', value: '欄位、單位、樓層格式標準化' },
-          { name: '屋齡計算', value: '交易年月日搭配建築完成年月' },
-          { name: '車位處理', value: '車位金額與面積獨立呈現' },
-          { name: '樣本提醒', value: '特殊交易與親友交易另外標示' },
-          { name: '比較原則', value: '條件一致才比較' },
-        ]} />
-      </section>
-    </div>
-  )
-}
-
 export function RebuiltSite() {
   const model = useDashboardModel()
   const [selectedRecordKey, setSelectedRecordKey] = useState(null)
   const [lastRecordKey, setLastRecordKey] = useState(null)
-  const [productSubview, setProductSubview] = useState('land')
-
-  const openLandAnalysis = () => {
-    setProductSubview('land')
-    window.setTimeout(() => scrollToSection('product'), 0)
-  }
 
   const detail = useMemo(
     () => (selectedRecordKey ? model.getTransactionDetail(selectedRecordKey) : null),
@@ -1022,16 +772,13 @@ export function RebuiltSite() {
 
   return (
     <div className="rebuild-shell">
-      <SiteHeader onOpenLandAnalysis={openLandAnalysis} />
+      <SiteHeader />
       <main className="rebuild-main">
         <section id="home" className="rebuild-section">
-          <HomeSection model={model} onOpenLandAnalysis={openLandAnalysis} />
+          <HomeSection model={model} />
         </section>
         <section id="regional" className="rebuild-section">
           <RegionalSection model={model} />
-        </section>
-        <section id="product" className="rebuild-section">
-          <ProductSection model={model} productSubview={productSubview} setProductSubview={setProductSubview} />
         </section>
         <section id="filters" className="rebuild-section">
           <FilterSection model={model} onOpenRecord={openRecord} activeRecordKey={selectedRecordKey} />
@@ -1045,9 +792,6 @@ export function RebuiltSite() {
             hasPrev={Boolean(prevRecordKey)}
             hasNext={Boolean(nextRecordKey)}
           />
-        </section>
-        <section id="about" className="rebuild-section">
-          <AboutSection />
         </section>
       </main>
     </div>
