@@ -1,8 +1,8 @@
 import './App.css'
-import { TainanSite } from './components/TainanSite.jsx'
+import { RebuiltSite } from './components/RebuiltSite.jsx'
 
 function App() {
-  return <TainanSite />
+  return <RebuiltSite />
 }
 
 export default App
