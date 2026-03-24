@@ -31,6 +31,7 @@ import { formatPrice, heatColor } from '../utils/dashboard.js'
 const navItems = [
   { id: 'home', label: '首頁', icon: Building2 },
   { id: 'regional', label: '區域總覽', icon: MapPinned },
+  { id: 'land', label: '土地交易分析', icon: BarChart3 },
   { id: 'product', label: '產品類型分析', icon: Layers3 },
   { id: 'filters', label: '條件篩選', icon: Search },
   { id: 'about', label: '資料說明', icon: FileText },
@@ -47,7 +48,7 @@ function getTimeRangeLabel(timeTab) {
   return '10 年'
 }
 
-function SiteHeader() {
+function SiteHeader({ onOpenLandAnalysis }) {
   return (
     <header className="rebuild-header">
       <div className="rebuild-header-inner">
@@ -59,7 +60,18 @@ function SiteHeader() {
           {navItems.map((item) => {
             const Icon = item.icon
             return (
-              <button key={item.id} type="button" className="rebuild-nav-link" onClick={() => scrollToSection(item.id)}>
+              <button
+                key={item.id}
+                type="button"
+                className="rebuild-nav-link"
+                onClick={() => {
+                  if (item.id === 'land') {
+                    onOpenLandAnalysis()
+                    return
+                  }
+                  scrollToSection(item.id)
+                }}
+              >
                 <Icon size={15} />
                 <span>{item.label}</span>
               </button>
@@ -95,7 +107,7 @@ function ModuleEntryCard({ title, text, onClick }) {
   )
 }
 
-function HomeSection({ model }) {
+function HomeSection({ model, onOpenLandAnalysis }) {
   const quickDistricts = model.availableDistricts.slice(0, 8)
   const homeStats = [
     {
@@ -161,6 +173,7 @@ function HomeSection({ model }) {
 
       <section className="rebuild-grid-3">
         <ModuleEntryCard title="區域總覽" text="比較各行政區成交件數、總價與單價輪廓，再進單區分析。" onClick={() => scrollToSection('regional')} />
+        <ModuleEntryCard title="土地交易分析" text="直接進入土地成交件數、總價、單價、面積與各區比較。" onClick={onOpenLandAnalysis} />
         <ModuleEntryCard title="產品類型分析" text="先分開看土地、建物、房地，再比較產品類型與建物型態。" onClick={() => scrollToSection('product')} />
         <ModuleEntryCard title="條件篩選" text="用區域、產品、坪數、屋齡、樓層與車位條件找出接近需求的樣本。" onClick={() => scrollToSection('filters')} />
       </section>
@@ -215,6 +228,38 @@ function RegionalSection({ model }) {
     .filter((row) => row.price > 0)
     .sort((a, b) => b.price - a.price)
     .slice(0, 12)
+  const districtTotalPriceDistributionRows = useMemo(() => {
+    const buckets = [
+      { name: '800萬以下', min: 0, max: 800 },
+      { name: '800-1200萬', min: 800, max: 1200 },
+      { name: '1200-1600萬', min: 1200, max: 1600 },
+      { name: '1600-2000萬', min: 1600, max: 2000 },
+      { name: '2000萬以上', min: 2000, max: Infinity },
+    ]
+
+    return buckets.map((bucket) => ({
+      name: bucket.name,
+      value: model.regionalOverviewRows.filter(
+        (row) => row.medianTotalPrice >= bucket.min && row.medianTotalPrice < bucket.max,
+      ).length,
+    }))
+  }, [model.regionalOverviewRows])
+  const districtUnitPriceDistributionRows = useMemo(() => {
+    const buckets = [
+      { name: '20萬以下', min: 0, max: 20 },
+      { name: '20-30萬', min: 20, max: 30 },
+      { name: '30-40萬', min: 30, max: 40 },
+      { name: '40-50萬', min: 40, max: 50 },
+      { name: '50萬以上', min: 50, max: Infinity },
+    ]
+
+    return buckets.map((bucket) => ({
+      name: bucket.name,
+      value: model.regionalOverviewRows.filter(
+        (row) => row.price >= bucket.min && row.price < bucket.max,
+      ).length,
+    }))
+  }, [model.regionalOverviewRows])
 
   return (
     <div className="rebuild-stack">
@@ -295,6 +340,36 @@ function RegionalSection({ model }) {
           })}
         </div>
       </ChartCard>
+
+      <section className="rebuild-grid-2">
+        <ChartCard title="各區總價分布" subtitle="先看目前有多少行政區落在不同的中位數總價帶。">
+          <div className="chart-wrap medium">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={districtTotalPriceDistributionRows} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e7e0d6" />
+                <XAxis dataKey="name" tickLine={false} axisLine={false} />
+                <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
+                <Tooltip formatter={(value) => [`${Number(value)} 區`, '行政區數']} />
+                <Bar dataKey="value" fill="#d8a55a" radius={[8, 8, 0, 0]} isAnimationActive={false} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </ChartCard>
+
+        <ChartCard title="各區單價分布" subtitle="再看目前有多少行政區落在不同的單價中位數區間。">
+          <div className="chart-wrap medium">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={districtUnitPriceDistributionRows} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e7e0d6" />
+                <XAxis dataKey="name" tickLine={false} axisLine={false} />
+                <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
+                <Tooltip formatter={(value) => [`${Number(value)} 區`, '行政區數']} />
+                <Bar dataKey="value" fill="#4a77d4" radius={[8, 8, 0, 0]} isAnimationActive={false} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </ChartCard>
+      </section>
 
       <section className="rebuild-grid-2">
         <ChartCard title="各區中位數總價比較" subtitle="依目前條件下最新年度成交樣本，比較各區主流成交總價。">
@@ -908,6 +983,11 @@ export function RebuiltSite() {
   const [lastRecordKey, setLastRecordKey] = useState(null)
   const [productSubview, setProductSubview] = useState('land')
 
+  const openLandAnalysis = () => {
+    setProductSubview('land')
+    window.setTimeout(() => scrollToSection('product'), 0)
+  }
+
   const detail = useMemo(
     () => (selectedRecordKey ? model.getTransactionDetail(selectedRecordKey) : null),
     [model, selectedRecordKey],
@@ -942,10 +1022,10 @@ export function RebuiltSite() {
 
   return (
     <div className="rebuild-shell">
-      <SiteHeader />
+      <SiteHeader onOpenLandAnalysis={openLandAnalysis} />
       <main className="rebuild-main">
         <section id="home" className="rebuild-section">
-          <HomeSection model={model} />
+          <HomeSection model={model} onOpenLandAnalysis={openLandAnalysis} />
         </section>
         <section id="regional" className="rebuild-section">
           <RegionalSection model={model} />
