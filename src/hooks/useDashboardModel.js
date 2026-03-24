@@ -8,16 +8,19 @@ import {
 import {
   buildAgeDistribution,
   buildComparisonSeries,
-  buildDistrictOverviews,
   buildInsights,
   buildPopularLocations,
   buildProjectDetail,
   buildPropertyTypeMix,
   buildRankings,
   buildRoomLayout,
+  buildTotalPriceBand,
+  buildValueProjects,
   buildVolumeSeries,
+  filterRecordsByScenario,
   groupRecordsByDistrict,
   processTrendData,
+  summarizeDistrictRecords,
   summarizeCity,
   withMovingAverage,
   checkBuildingMatch,
@@ -28,63 +31,81 @@ export function useDashboardModel() {
   const [activeTab, setActiveTab] = useState('1y')
   const [selectedDistrict, setSelectedDistrict] = useState('東區')
   const [selectedLocation, setSelectedLocation] = useState('all')
+  const [buyerScenario, setBuyerScenario] = useState('all')
   const [propertyTypeFilter, setPropertyTypeFilter] = useState(['existing', 'presale'])
   const [buildingFilter, setBuildingFilter] = useState(['elevator', 'apartment', 'house', 'store'])
+  const [totalPriceRange, setTotalPriceRange] = useState({ min: '', max: '' })
+  const [totalPingRange, setTotalPingRange] = useState({ min: '', max: '' })
   const {
     isProcessing,
+    manifest,
     recordsByDistrict,
     uploadStats,
     latestDataDate,
     isRealMode,
     importMessage,
     importError,
+    persistedAt,
+    storageMode,
+    isSharedMode,
+    importedFiles,
+    ensureDistrictLoaded,
     loadFiles,
+    clearImportedData,
+    removeImportedFile,
   } = useHousingData()
 
-  const allRecords = useMemo(
-    () => (isRealMode ? Array.from(recordsByDistrict.values()).flat() : []),
-    [isRealMode, recordsByDistrict],
-  )
-
-  const filteredAllRecords = useMemo(
+  const availableDistricts = useMemo(
     () =>
       isRealMode
-        ? allRecords.filter(
-            (record) =>
-              propertyTypeFilter.includes(record.type) && checkBuildingMatch(record, buildingFilter),
-          )
-        : [],
-    [allRecords, buildingFilter, isRealMode, propertyTypeFilter],
+        ? manifest.realOverviews.map((item) => item.name)
+        : Object.keys(districtTrendMap),
+    [isRealMode, manifest.realOverviews],
   )
 
-  const filteredRecordsByDistrict = useMemo(
-    () => (isRealMode ? groupRecordsByDistrict(filteredAllRecords) : new Map()),
-    [filteredAllRecords, isRealMode],
+  const comparisonDistricts = useMemo(
+    () => (isRealMode ? availableDistricts.slice(0, 4) : ['東區', '永康區', '善化區', '安平區']),
+    [availableDistricts, isRealMode],
   )
 
-  const realOverviews = useMemo(
-    () => (isRealMode ? buildDistrictOverviews(filteredRecordsByDistrict) : districtOverviews),
-    [filteredRecordsByDistrict, isRealMode],
-  )
+  useEffect(() => {
+    if (selectedDistrict) ensureDistrictLoaded(selectedDistrict)
+  }, [ensureDistrictLoaded, selectedDistrict])
 
-  const availableDistricts = useMemo(
-    () => (isRealMode ? realOverviews.map((item) => item.name) : Object.keys(districtTrendMap)),
-    [isRealMode, realOverviews],
-  )
+  useEffect(() => {
+    comparisonDistricts.forEach((district) => {
+      ensureDistrictLoaded(district)
+    })
+  }, [comparisonDistricts, ensureDistrictLoaded])
 
   const districtData = districtTrendMap[selectedDistrict] ?? districtTrendMap.東區
-
-  const districtBaseRecords = useMemo(
-    () => (isRealMode ? filteredRecordsByDistrict.get(selectedDistrict) ?? [] : []),
-    [filteredRecordsByDistrict, isRealMode, selectedDistrict],
+  const districtMeta = manifest.districtMetaByName?.[selectedDistrict] || null
+  const loadedSelectedDistrictRecords = useMemo(
+    () => recordsByDistrict.get(selectedDistrict) ?? [],
+    [recordsByDistrict, selectedDistrict],
   )
 
-  const popularLocations = useMemo(
+  const districtBaseRecords = useMemo(
     () =>
       isRealMode
-        ? buildPopularLocations(districtBaseRecords)
-        : (districtData.rankings || []).map((item) => item.name),
-    [districtBaseRecords, districtData.rankings, isRealMode],
+        ? loadedSelectedDistrictRecords.filter(
+            (record) =>
+              propertyTypeFilter.includes(record.type) &&
+              checkBuildingMatch(record, buildingFilter) &&
+              (totalPriceRange.min === '' || record.totalPrice / 10000 >= Number(totalPriceRange.min)) &&
+              (totalPriceRange.max === '' || record.totalPrice / 10000 <= Number(totalPriceRange.max)) &&
+              (totalPingRange.min === '' || record.totalPing >= Number(totalPingRange.min)) &&
+              (totalPingRange.max === '' || record.totalPing <= Number(totalPingRange.max)),
+          )
+        : [],
+    [
+      buildingFilter,
+      isRealMode,
+      loadedSelectedDistrictRecords,
+      propertyTypeFilter,
+      totalPingRange,
+      totalPriceRange,
+    ],
   )
 
   const districtRecords = useMemo(
@@ -97,84 +118,197 @@ export function useDashboardModel() {
     [districtBaseRecords, isRealMode, selectedLocation],
   )
 
-  const citySummary = useMemo(() => summarizeCity(realOverviews), [realOverviews])
+  const scenarioDistrictRecords = useMemo(
+    () => (isRealMode ? filterRecordsByScenario(districtBaseRecords, buyerScenario) : districtRecords),
+    [buyerScenario, districtBaseRecords, districtRecords, isRealMode],
+  )
+
+  const realOverviews = useMemo(
+    () => (isRealMode ? manifest.realOverviews : districtOverviews),
+    [isRealMode, manifest.realOverviews],
+  )
+
+  const selectedDistrictOverview = useMemo(
+    () =>
+      realOverviews.find((item) => item.name === selectedDistrict) ??
+      districtMeta?.overview ??
+      null,
+    [districtMeta?.overview, realOverviews, selectedDistrict],
+  )
+
+  const popularLocations = useMemo(
+    () =>
+      districtBaseRecords.length > 0
+        ? buildPopularLocations(districtBaseRecords)
+        : districtMeta?.popularLocations || (districtData.rankings || []).map((item) => item.name),
+    [districtBaseRecords, districtData.rankings, districtMeta?.popularLocations],
+  )
+
+  const citySummary = useMemo(
+    () => (isRealMode ? manifest.citySummary : summarizeCity(realOverviews)),
+    [isRealMode, manifest.citySummary, realOverviews],
+  )
 
   const cityTrend = useMemo(
-    () =>
-      withMovingAverage(
-        isRealMode ? processTrendData(filteredAllRecords, activeTab) : cityTrendByTab[activeTab],
-      ),
-    [activeTab, filteredAllRecords, isRealMode],
+    () => (isRealMode ? manifest.cityTrendByTab?.[activeTab] || [] : cityTrendByTab[activeTab]),
+    [activeTab, isRealMode, manifest.cityTrendByTab],
   )
 
   const cityVolumeTrend = useMemo(
     () =>
       isRealMode
-        ? buildVolumeSeries(filteredAllRecords, activeTab)
+        ? manifest.cityVolumeTrendByTab?.[activeTab] || []
         : cityTrendByTab[activeTab].map((item) => ({ period: item.period, volume: item.volume })),
-    [activeTab, filteredAllRecords, isRealMode],
+    [activeTab, isRealMode, manifest.cityVolumeTrendByTab],
   )
 
   const districtTrend = useMemo(
     () =>
-      withMovingAverage(
-        isRealMode
-          ? processTrendData(districtRecords, activeTab)
-          : districtData.trend[activeTab] ?? districtData.trend['1y'],
-      ),
-    [activeTab, districtData, districtRecords, isRealMode],
+      districtRecords.length > 0
+        ? withMovingAverage(processTrendData(districtRecords, activeTab))
+        : districtMeta?.trendByTab?.[activeTab] || districtData.trend[activeTab] || districtData.trend['1y'],
+    [activeTab, districtData, districtMeta?.trendByTab, districtRecords],
+  )
+
+  const scenarioDistrictTrend = useMemo(
+    () =>
+      scenarioDistrictRecords.length > 0
+        ? withMovingAverage(processTrendData(scenarioDistrictRecords, activeTab))
+        : districtMeta?.trendByTab?.[activeTab] || districtData.trend[activeTab] || districtData.trend['1y'],
+    [activeTab, districtData, districtMeta?.trendByTab, scenarioDistrictRecords],
   )
 
   const ageDistribution = useMemo(
-    () => (isRealMode ? buildAgeDistribution(districtRecords) : districtData.ageDistribution),
-    [districtData.ageDistribution, districtRecords, isRealMode],
+    () =>
+      districtRecords.length > 0
+        ? buildAgeDistribution(districtRecords)
+        : districtMeta?.ageDistribution || districtData.ageDistribution,
+    [districtData.ageDistribution, districtMeta?.ageDistribution, districtRecords],
   )
 
   const rankings = useMemo(
-    () => (isRealMode ? buildRankings(districtBaseRecords) : districtData.rankings),
-    [districtBaseRecords, districtData.rankings, isRealMode],
+    () =>
+      districtBaseRecords.length > 0
+        ? buildRankings(districtBaseRecords)
+        : districtMeta?.rankings || districtData.rankings,
+    [districtBaseRecords, districtData.rankings, districtMeta?.rankings],
+  )
+
+  const scenarioRankings = useMemo(
+    () =>
+      scenarioDistrictRecords.length > 0
+        ? buildRankings(scenarioDistrictRecords)
+        : districtMeta?.rankings || districtData.rankings,
+    [districtData.rankings, districtMeta?.rankings, scenarioDistrictRecords],
   )
 
   const insights = useMemo(
-    () => (isRealMode ? buildInsights(districtRecords) : districtData.aiReport),
-    [districtData.aiReport, districtRecords, isRealMode],
+    () =>
+      districtRecords.length > 0
+        ? buildInsights(districtRecords)
+        : districtMeta?.aiReport || districtData.aiReport,
+    [districtData.aiReport, districtMeta?.aiReport, districtRecords],
   )
 
   const roomMix = useMemo(
     () =>
-      isRealMode
+      districtRecords.length > 0
         ? buildRoomLayout(districtRecords)
-        : [
+        : districtMeta?.roomMix || [
             { name: '2房', value: 45 },
             { name: '3房', value: 33 },
             { name: '1房', value: 12 },
             { name: '4房以上', value: 10 },
           ],
-    [districtRecords, isRealMode],
+    [districtMeta?.roomMix, districtRecords],
+  )
+
+  const scenarioRoomMix = useMemo(
+    () =>
+      scenarioDistrictRecords.length > 0
+        ? buildRoomLayout(scenarioDistrictRecords)
+        : districtMeta?.roomMix || [
+            { name: '2房', value: 45 },
+            { name: '3房', value: 33 },
+            { name: '1房', value: 12 },
+            { name: '4房以上', value: 10 },
+          ],
+    [districtMeta?.roomMix, scenarioDistrictRecords],
   )
 
   const typeMix = useMemo(
     () =>
-      isRealMode
+      districtRecords.length > 0
         ? buildPropertyTypeMix(districtRecords)
-        : [
+        : districtMeta?.typeMix || [
             { name: '中古屋', value: 65 },
             { name: '預售屋', value: 35 },
           ],
-    [districtRecords, isRealMode],
+    [districtMeta?.typeMix, districtRecords],
   )
 
-  const comparisonData = useMemo(
+  const scenarioTypeMix = useMemo(
     () =>
-      isRealMode
-        ? buildComparisonSeries(filteredRecordsByDistrict, availableDistricts.slice(0, 4), activeTab)
-        : comparisonSeries,
-    [activeTab, availableDistricts, filteredRecordsByDistrict, isRealMode],
+      scenarioDistrictRecords.length > 0
+        ? buildPropertyTypeMix(scenarioDistrictRecords)
+        : districtMeta?.typeMix || [
+            { name: '中古屋', value: 65 },
+            { name: '預售屋', value: 35 },
+          ],
+    [districtMeta?.typeMix, scenarioDistrictRecords],
   )
 
-  const selectedDistrictOverview = useMemo(
-    () => realOverviews.find((item) => item.name === selectedDistrict) ?? null,
-    [realOverviews, selectedDistrict],
+  const comparisonData = useMemo(() => {
+    if (!isRealMode) return comparisonSeries
+
+    const loadedComparisonMap = new Map()
+    comparisonDistricts.forEach((district) => {
+      const records = recordsByDistrict.get(district) ?? []
+      const filtered = records.filter(
+        (record) =>
+          propertyTypeFilter.includes(record.type) &&
+          checkBuildingMatch(record, buildingFilter) &&
+          (totalPriceRange.min === '' || record.totalPrice / 10000 >= Number(totalPriceRange.min)) &&
+          (totalPriceRange.max === '' || record.totalPrice / 10000 <= Number(totalPriceRange.max)) &&
+          (totalPingRange.min === '' || record.totalPing >= Number(totalPingRange.min)) &&
+          (totalPingRange.max === '' || record.totalPing <= Number(totalPingRange.max)),
+      )
+      if (filtered.length > 0) loadedComparisonMap.set(district, filtered)
+    })
+
+    if (loadedComparisonMap.size === comparisonDistricts.length) {
+      return buildComparisonSeries(loadedComparisonMap, comparisonDistricts, activeTab)
+    }
+
+    return manifest.comparisonSeriesByTab?.[activeTab] || []
+  }, [
+    activeTab,
+    buildingFilter,
+    comparisonDistricts,
+    isRealMode,
+    manifest.comparisonSeriesByTab,
+    propertyTypeFilter,
+    recordsByDistrict,
+    totalPingRange,
+    totalPriceRange,
+  ])
+
+  const scenarioDistrictOverview = useMemo(
+    () =>
+      scenarioDistrictRecords.length > 0
+        ? summarizeDistrictRecords(scenarioDistrictRecords)
+        : selectedDistrictOverview,
+    [scenarioDistrictRecords, selectedDistrictOverview],
+  )
+
+  const districtTotalPriceBand = useMemo(
+    () => buildTotalPriceBand(scenarioDistrictRecords),
+    [scenarioDistrictRecords],
+  )
+
+  const valueProjects = useMemo(
+    () => buildValueProjects(scenarioDistrictRecords, scenarioDistrictOverview?.price || 0),
+    [scenarioDistrictOverview?.price, scenarioDistrictRecords],
   )
 
   const minPrice = Math.min(...realOverviews.map((item) => item.price))
@@ -188,6 +322,7 @@ export function useDashboardModel() {
 
   useEffect(() => {
     setSelectedLocation('all')
+    setBuyerScenario('all')
   }, [selectedDistrict])
 
   useEffect(() => {
@@ -216,7 +351,7 @@ export function useDashboardModel() {
 
   const getProjectDetail = (projectName) => {
     if (!projectName) return null
-    if (isRealMode) return buildProjectDetail(projectName, districtBaseRecords)
+    if (districtBaseRecords.length > 0) return buildProjectDetail(projectName, districtBaseRecords)
 
     const ranking = rankings.find((item) => item.name === projectName)
     if (!ranking) return null
@@ -245,17 +380,29 @@ export function useDashboardModel() {
     setSelectedDistrict,
     selectedLocation,
     setSelectedLocation,
+    buyerScenario,
+    setBuyerScenario,
     propertyTypeFilter,
     buildingFilter,
     togglePropertyType,
     toggleBuildingType,
+    totalPriceRange,
+    setTotalPriceRange,
+    totalPingRange,
+    setTotalPingRange,
     isProcessing,
     uploadStats,
     latestDataDate,
     isRealMode,
     importMessage,
     importError,
+    persistedAt,
+    storageMode,
+    isSharedMode,
+    importedFiles,
     loadFiles,
+    clearImportedData,
+    removeImportedFile,
     availableDistricts,
     citySummary,
     cityTrend,
@@ -265,13 +412,20 @@ export function useDashboardModel() {
     districtRecords,
     districtBaseRecords,
     districtTrend,
+    scenarioDistrictTrend,
     ageDistribution,
     rankings,
+    scenarioRankings,
     insights,
     roomMix,
+    scenarioRoomMix,
     typeMix,
+    scenarioTypeMix,
     popularLocations,
     selectedDistrictOverview,
+    scenarioDistrictOverview,
+    districtTotalPriceBand,
+    valueProjects,
     minPrice,
     maxPrice,
     getProjectDetail,

@@ -100,7 +100,7 @@ function AdminLoginCard({ password, onPasswordChange, onSubmit, authError }) {
       <div className="panel-head">
         <div>
           <h3>管理登入</h3>
-          <p>只有輸入管理密碼後，才會顯示 CSV 累積匯入工具。</p>
+          <p>只有輸入管理密碼後，才會顯示 GitHub 共用資料管理說明。</p>
         </div>
         <LockKeyhole className="panel-badge" />
       </div>
@@ -243,7 +243,7 @@ function HomePage({ model, onNavigate, onOpenProject }) {
             <button type="button" className="persona-card" onClick={() => onNavigate('pro')}>
               <BarChart3 size={20} />
               <strong>我是房仲</strong>
-              <p>我要更多篩選器、比較圖和 CSV 匯入。</p>
+              <p>我要更多篩選器、比較圖和 GitHub 資料管理。</p>
             </button>
             <button type="button" className="persona-card" onClick={() => onNavigate('about')}>
               <ShieldCheck size={20} />
@@ -296,10 +296,31 @@ function DistrictPage({ model, onNavigate, onOpenProject }) {
         </label>
       </section>
 
+      <section className="panel scenario-panel">
+        <div className="panel-head compact">
+          <div>
+            <h3>我是哪一種買方</h3>
+            <p>按一下就能快速切到適合你的房型與價格視角。</p>
+          </div>
+        </div>
+        <div className="chip-row">
+          <button type="button" className={model.buyerScenario === 'all' ? 'chip active' : 'chip'} onClick={() => model.setBuyerScenario('all')}>
+            我先看全部
+          </button>
+          <button type="button" className={model.buyerScenario === 'starter' ? 'chip active' : 'chip'} onClick={() => model.setBuyerScenario('starter')}>
+            我是首購（看 1-2 房）
+          </button>
+          <button type="button" className={model.buyerScenario === 'upgrade' ? 'chip active' : 'chip'} onClick={() => model.setBuyerScenario('upgrade')}>
+            我是換屋（看 3-4 房）
+          </button>
+        </div>
+      </section>
+
       <div className="metric-grid">
-        <MetricCard label="平均價格" value={`${formatPrice(model.selectedDistrictOverview?.price)} 萬/坪`} helper="這區大概價格" accent="blue" />
-        <MetricCard label="最近有沒有變貴" value={<TrendBadge value={model.selectedDistrictOverview?.yoy} />} helper="快速看漲跌" accent="amber" />
-        <MetricCard label="成交筆數" value={`${model.selectedDistrictOverview?.volume ?? '-'} 筆`} helper="筆數越多，代表成交越熱" accent="slate" />
+        <MetricCard label="平均價格" value={`${formatPrice(model.scenarioDistrictOverview?.price)} 萬/坪`} helper="這區大概價格" accent="blue" />
+        <MetricCard label="最近有沒有變貴" value={<TrendBadge value={model.scenarioDistrictOverview?.yoy} />} helper="快速看漲跌" accent="amber" />
+        <MetricCard label="主流總價帶" value={model.districtTotalPriceBand.label} helper="大多數買方大概落在這個總價區間" accent="slate" />
+        <MetricCard label="成交筆數" value={`${model.scenarioDistrictOverview?.volume ?? '-'} 筆`} helper="筆數越多，代表成交越熱" accent="slate" />
         <MetricCard label="一句話看法" value={model.insights.health} helper={`${model.insights.structure} / ${model.insights.momentum}`} accent="green" />
       </div>
 
@@ -307,7 +328,7 @@ function DistrictPage({ model, onNavigate, onOpenProject }) {
         <ChartCard title="這一區的價格變化" subtitle="先看這一區最近是變貴、變便宜，還是差不多。">
           <div className="chart-wrap large">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={model.districtTrend} margin={{ top: 12, right: 16, left: -18, bottom: 0 }}>
+              <ComposedChart data={model.scenarioDistrictTrend} margin={{ top: 12, right: 16, left: -18, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eadfce" />
                 <XAxis dataKey="period" tick={{ fontSize: 11, fill: '#7c6855' }} tickLine={false} axisLine={false} />
                 <YAxis yAxisId="left" tick={{ fontSize: 11, fill: '#8b6b36' }} tickLine={false} axisLine={false} />
@@ -325,8 +346,8 @@ function DistrictPage({ model, onNavigate, onOpenProject }) {
             <div className="chart-wrap small">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={model.roomMix} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={84} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
-                    {model.roomMix.map((entry, index) => (
+                  <Pie data={model.scenarioRoomMix} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={84} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                    {model.scenarioRoomMix.map((entry, index) => (
                       <Cell key={entry.name} fill={pieColors[index % pieColors.length]} />
                     ))}
                   </Pie>
@@ -337,8 +358,8 @@ function DistrictPage({ model, onNavigate, onOpenProject }) {
             <div className="chart-wrap small">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={model.typeMix} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={84} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
-                    {model.typeMix.map((entry, index) => (
+                  <Pie data={model.scenarioTypeMix} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={84} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                    {model.scenarioTypeMix.map((entry, index) => (
                       <Cell key={entry.name} fill={pieColors[(index + 1) % pieColors.length]} />
                     ))}
                   </Pie>
@@ -358,15 +379,39 @@ function DistrictPage({ model, onNavigate, onOpenProject }) {
           </div>
         </div>
         <div className="simple-list">
-          {model.rankings.map((project) => (
+          {model.scenarioRankings.map((project) => (
             <button key={project.name} type="button" className="simple-list-item" onClick={() => onOpenProject(project.name)}>
               <div>
                 <strong>{project.name}</strong>
-                <p>{project.type}</p>
+                <p>{project.type} / 主流總價 {project.totalPriceBandLabel}</p>
               </div>
               <span>{formatPrice(project.medianPrice)} 萬/坪</span>
             </button>
           ))}
+        </div>
+      </section>
+
+      <section className="panel simple-list-panel">
+        <div className="panel-head">
+          <div>
+            <h3>高性價比社區</h3>
+            <p>這些社區成交筆數穩定，而且價格比本區平均更親切，適合務實型買方先看。</p>
+          </div>
+        </div>
+        <div className="simple-list">
+          {model.valueProjects.length > 0 ? (
+            model.valueProjects.map((project) => (
+              <button key={project.name} type="button" className="simple-list-item" onClick={() => onOpenProject(project.name)}>
+                <div>
+                  <strong>{project.name}</strong>
+                  <p>{project.volume} 筆成交 / 主流總價 {project.totalPriceBandLabel}</p>
+                </div>
+                <span>{formatPrice(project.medianPrice)} 萬/坪</span>
+              </button>
+            ))
+          ) : (
+            <div className="empty-state">目前這個條件下，還沒有特別明顯的高 CP 值社區。</div>
+          )}
         </div>
       </section>
 
@@ -397,13 +442,13 @@ function AboutPage() {
           <div className="panel-head">
             <div>
               <h3>資料來源</h3>
-              <p>目前以內政部實價登錄公開資料為主，也支援你自己匯入 CSV。</p>
+              <p>目前以內政部實價登錄公開資料為主，也支援把 CSV 整理進 GitHub 共用資料檔。</p>
             </div>
           </div>
           <div className="info-list">
             <p>1. 可自動讀取 `public` 裡的房價資料檔。</p>
-            <p>2. 也可以手動上傳 `CSV`。</p>
-            <p>3. 匯入後會自動整理成行政區、社區和時間趨勢。</p>
+            <p>2. 也可以把很多期 `CSV` 放進 repo 的 `data/raw/`。</p>
+            <p>3. 重新建置後會整理成行政區、社區和時間趨勢，所有人看到同一份資料。</p>
           </div>
         </section>
 

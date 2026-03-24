@@ -14,6 +14,7 @@ import {
   Line,
   Bar,
   Legend,
+  ReferenceLine,
 } from 'recharts'
 import {
   Activity,
@@ -21,13 +22,13 @@ import {
   BarChart3,
   Building2,
   Crown,
+  Download,
+  FileText,
   Flame,
   Layers3,
-  Loader2,
   MapPinned,
   ShieldCheck,
   TrendingUp,
-  Upload,
 } from 'lucide-react'
 import { tainanGrid, timeTabs } from '../data/dashboardData.js'
 import { buildVolumeSeries, formatPrice, heatColor } from '../utils/dashboard.js'
@@ -40,6 +41,121 @@ const pieColors = ['#b45309', '#d97706', '#f59e0b', '#fbbf24', '#fcd34d']
 const compareColors = ['#1d4ed8', '#059669', '#d97706', '#dc2626']
 const typeColors = ['#1d4ed8', '#d97706']
 
+function saveChartAsImage(containerRef, fileName) {
+  const container = containerRef?.current
+  if (!container) return
+  const svgElement = container.querySelector('svg')
+  if (!svgElement) return
+
+  const bounds = svgElement.getBoundingClientRect()
+  const canvas = document.createElement('canvas')
+  const scale = 2
+  canvas.width = bounds.width * scale
+  canvas.height = bounds.height * scale
+  const context = canvas.getContext('2d')
+  if (!context) return
+  context.scale(scale, scale)
+
+  const clone = svgElement.cloneNode(true)
+  const background = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
+  background.setAttribute('width', '100%')
+  background.setAttribute('height', '100%')
+  background.setAttribute('fill', '#fffdf8')
+  clone.insertBefore(background, clone.firstChild)
+
+  const xml = new XMLSerializer().serializeToString(clone)
+  const blob = new Blob([xml], { type: 'image/svg+xml;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const image = new Image()
+
+  image.onload = () => {
+    context.fillStyle = '#fffdf8'
+    context.fillRect(0, 0, bounds.width, bounds.height)
+    context.drawImage(image, 0, 0, bounds.width, bounds.height)
+    const link = document.createElement('a')
+    link.href = canvas.toDataURL('image/png')
+    link.download = `${fileName}.png`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
+  image.src = url
+}
+
+function chartToDataUrl(containerRef) {
+  return new Promise((resolve) => {
+    const container = containerRef?.current
+    if (!container) {
+      resolve('')
+      return
+    }
+
+    const svgElement = container.querySelector('svg')
+    if (!svgElement) {
+      resolve('')
+      return
+    }
+
+    const bounds = svgElement.getBoundingClientRect()
+    const canvas = document.createElement('canvas')
+    const scale = 2
+    canvas.width = bounds.width * scale
+    canvas.height = bounds.height * scale
+    const context = canvas.getContext('2d')
+    if (!context) {
+      resolve('')
+      return
+    }
+    context.scale(scale, scale)
+
+    const clone = svgElement.cloneNode(true)
+    const background = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
+    background.setAttribute('width', '100%')
+    background.setAttribute('height', '100%')
+    background.setAttribute('fill', '#fffdf8')
+    clone.insertBefore(background, clone.firstChild)
+
+    const xml = new XMLSerializer().serializeToString(clone)
+    const blob = new Blob([xml], { type: 'image/svg+xml;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const image = new Image()
+
+    image.onload = () => {
+      context.fillStyle = '#fffdf8'
+      context.fillRect(0, 0, bounds.width, bounds.height)
+      context.drawImage(image, 0, 0, bounds.width, bounds.height)
+      const dataUrl = canvas.toDataURL('image/png')
+      URL.revokeObjectURL(url)
+      resolve(dataUrl)
+    }
+
+    image.onerror = () => {
+      URL.revokeObjectURL(url)
+      resolve('')
+    }
+
+    image.src = url
+  })
+}
+
+function DownloadChartButton({ chartRef, fileName }) {
+  return (
+    <button type="button" className="chart-download-btn" onClick={() => saveChartAsImage(chartRef, fileName)}>
+      <Download size={15} />
+      下載圖片
+    </button>
+  )
+}
+
+function PdfReportButton({ onExport }) {
+  return (
+    <button type="button" className="chart-download-btn" onClick={onExport}>
+      <FileText size={15} />
+      匯出 PDF 簡報
+    </button>
+  )
+}
+
 function DetailMetric({ label, value, helper }) {
   return (
     <article className="detail-metric">
@@ -51,6 +167,7 @@ function DetailMetric({ label, value, helper }) {
 }
 
 export function ProjectDetailView({ detail, onBack }) {
+  const projectTrendRef = useRef(null)
   return (
     <div className="project-detail-page">
       <div className="project-back-row">
@@ -86,8 +203,12 @@ export function ProjectDetailView({ detail, onBack }) {
       </header>
 
       <div className="dashboard-grid">
-        <ChartCard title="這個社區的價格變化" subtitle="看這個社區以前和現在的價格怎麼變。">
-          <div className="chart-wrap large">
+        <ChartCard
+          title="這個社區的價格變化"
+          subtitle="看這個社區以前和現在的價格怎麼變。"
+          actions={<DownloadChartButton chartRef={projectTrendRef} fileName={`${detail.projectName}-價格變化`} />}
+        >
+          <div className="chart-wrap large" ref={projectTrendRef}>
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={detail.trend} margin={{ top: 12, right: 16, left: -18, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eadfce" />
@@ -99,6 +220,8 @@ export function ProjectDetailView({ detail, onBack }) {
                 <Bar yAxisId="left" dataKey="volume" name="成交筆數" fill="#efc27b" radius={[8, 8, 0, 0]} />
                 <Line yAxisId="right" dataKey="price" name="平均價格" type="monotone" stroke="#1d4ed8" strokeWidth={3} dot={{ r: 3 }} />
                 <Line yAxisId="right" dataKey="maPrice" name="平均線" type="monotone" stroke="#059669" strokeWidth={2.5} strokeDasharray="6 5" dot={false} />
+                <ReferenceLine yAxisId="right" y={detail.stats.maxRecord?.unitPricePing} stroke="#dc2626" strokeDasharray="4 4" ifOverflow="extendDomain" label={{ value: '歷史天花板', fill: '#dc2626', fontSize: 11 }} />
+                <ReferenceLine yAxisId="right" y={detail.stats.minRecord?.unitPricePing} stroke="#059669" strokeDasharray="4 4" ifOverflow="extendDomain" label={{ value: '歷史地板', fill: '#059669', fontSize: 11 }} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -191,8 +314,9 @@ export function ProjectDetailView({ detail, onBack }) {
 }
 
 export function TainanDashboardView({ model, onSelectProject, canManageImports = false, onLogoutImports, loginCard = null }) {
-  const fileInputRef = useRef(null)
-  const folderInputRef = useRef(null)
+  const cityTrendRef = useRef(null)
+  const districtTrendRef = useRef(null)
+  const comparisonTrendRef = useRef(null)
   const {
     activeTab,
     setActiveTab,
@@ -204,6 +328,10 @@ export function TainanDashboardView({ model, onSelectProject, canManageImports =
     buildingFilter,
     togglePropertyType,
     toggleBuildingType,
+    totalPriceRange,
+    setTotalPriceRange,
+    totalPingRange,
+    setTotalPingRange,
     isProcessing,
     uploadStats,
     latestDataDate,
@@ -211,8 +339,9 @@ export function TainanDashboardView({ model, onSelectProject, canManageImports =
     importMessage,
     importError,
     persistedAt,
-    loadFiles,
-    clearImportedData,
+    storageMode,
+    isSharedMode,
+    importedFiles,
     availableDistricts,
     citySummary,
     cityTrend,
@@ -236,48 +365,75 @@ export function TainanDashboardView({ model, onSelectProject, canManageImports =
     if (onSelectProject) onSelectProject(projectName)
   }
 
+  const exportPdfReport = async () => {
+    const [cityChart, districtChart, comparisonChart] = await Promise.all([
+      chartToDataUrl(cityTrendRef),
+      chartToDataUrl(districtTrendRef),
+      chartToDataUrl(comparisonTrendRef),
+    ])
+
+    const reportWindow = window.open('', '_blank', 'width=1200,height=900')
+    if (!reportWindow) return
+
+    const safeImage = (src, title) =>
+      src
+        ? `<section style="margin:20px 0;"><h2 style="font-size:18px;margin:0 0 10px;">${title}</h2><img src="${src}" style="width:100%;border:1px solid #e5d7c3;border-radius:16px;" /></section>`
+        : ''
+
+    reportWindow.document.write(`
+      <html>
+        <head>
+          <title>${selectedDistrict} 房市簡報</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background:#fffdf8; color:#312318; margin:32px; }
+            h1 { margin:0 0 8px; font-size:28px; }
+            p { color:#6b5a48; line-height:1.6; }
+            .grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:24px 0; }
+            .card { border:1px solid #e5d7c3; border-radius:18px; padding:16px; background:#fff; }
+            .label { font-size:12px; color:#8a7259; font-weight:700; }
+            .value { margin-top:8px; font-size:24px; font-weight:800; color:#9f611f; }
+            .helper { margin-top:6px; font-size:12px; color:#7a6858; }
+            @media print { body { margin:16px; } }
+          </style>
+        </head>
+        <body>
+          <h1>${selectedDistrict} 房市簡報</h1>
+          <p>匯出時間：${new Date().toLocaleString('zh-TW')}。這份簡報整理目前篩選條件下的重點數據，可直接另存成 PDF 提供給客戶。</p>
+          <div class="grid">
+            <div class="card"><div class="label">台南平均價格</div><div class="value">${formatPrice(citySummary.price)} 萬/坪</div><div class="helper">整體市場大概價格</div></div>
+            <div class="card"><div class="label">${selectedDistrict} 平均價格</div><div class="value">${formatPrice(selectedDistrictOverview?.price)} 萬/坪</div><div class="helper">當前行政區常見價格</div></div>
+            <div class="card"><div class="label">最新資料</div><div class="value">${latestDataDate || '-'}</div><div class="helper">目前分析資料時間</div></div>
+            <div class="card"><div class="label">已匯入期數</div><div class="value">${importedFiles.length} 期</div><div class="helper">可在匯入清單管理</div></div>
+          </div>
+          ${safeImage(cityChart, '台南房價變化')}
+          ${safeImage(districtChart, `${selectedDistrict} 價格變化`)}
+          ${safeImage(comparisonChart, '行政區價格比較')}
+        </body>
+      </html>
+    `)
+    reportWindow.document.close()
+    reportWindow.focus()
+    setTimeout(() => {
+      reportWindow.print()
+    }, 400)
+  }
+
   return (
     <div className="dashboard-page">
-      <header className="dashboard-hero">
-        <div className="hero-main">
-          <div className="hero-copy">
-            <p className="eyebrow">Professional View</p>
-            <h1>專業分析頁</h1>
-            <p className="hero-lead">
-              這一頁保留比較完整的圖表、篩選器和 CSV 匯入功能，讓房仲或進階使用者可以更深入看資料。
-            </p>
-          </div>
-
-          <div className="hero-highlights">
-            <div className="highlight-card">
-              <Building2 className="highlight-icon" />
-              <div>
-                <p>目前模式</p>
-                <strong>{isRealMode ? '真實資料分析中' : '展示資料模式'}</strong>
-              </div>
-            </div>
-            <div className="highlight-card">
-              <ShieldCheck className="highlight-icon" />
-              <div>
-                <p>這頁適合誰</p>
-                <strong>房仲、代銷、進階使用者</strong>
-              </div>
-            </div>
-            <div className="highlight-card">
-              <Layers3 className="highlight-icon" />
-              <div>
-                <p>這裡能做什麼</p>
-                <strong>篩資料、看趨勢、比較行政區</strong>
-              </div>
-            </div>
-          </div>
+      <header className="dashboard-hero dashboard-hero-pro">
+        <div className="hero-copy hero-copy-compact">
+          <p className="eyebrow">Professional View</p>
+          <h1>專業分析頁</h1>
+          <p className="hero-lead">把篩選器、價量變化、行政區比較和匯入工具集中在同一頁，方便快速配案與議價。</p>
         </div>
-
         <div className="metric-grid">
           <MetricCard label="台南平均價格" value={`${formatPrice(citySummary.price)} 萬/坪`} helper="整體市場大概價格" accent="blue" />
           <MetricCard label="最近有沒有變貴" value={<TrendBadge value={citySummary.yoy} />} helper="快速看現在是漲還是跌" accent="amber" />
           <MetricCard label="總共有幾筆資料" value={`${citySummary.volume || 0} 筆`} helper={isRealMode ? `最新資料到 ${latestDataDate}` : '現在是展示用範例資料'} accent="slate" />
           <MetricCard label="現在最貴的區" value={`${citySummary.hottest.name} ${formatPrice(citySummary.hottest.price)}`} helper="目前看起來最貴的行政區" accent="green" />
+        </div>
+        <div className="hero-actions-row">
+          <PdfReportButton onExport={exportPdfReport} />
         </div>
       </header>
 
@@ -285,62 +441,70 @@ export function TainanDashboardView({ model, onSelectProject, canManageImports =
         <section className="panel upload-panel">
           <div className="panel-head compact">
             <div>
-              <h3>CSV 累積匯入</h3>
-              <p>可以一次匯入很多期 CSV，資料會累積存在這台電腦，下次打開會自動接續。</p>
+              <h3>GitHub 共用資料管理</h3>
+              <p>這個網站現在改成 GitHub 共用資料模式。把每一期 CSV 放進 repo 的 `data/raw/`，重新部署後，所有人看到的就會是同一份最新資料。</p>
             </div>
             <div className="upload-actions">
-              <button type="button" className="upload-trigger secondary" onClick={() => folderInputRef.current?.click()}>
-                {isProcessing ? <Loader2 className="spin" size={16} /> : <Upload size={16} />}
-                匯入資料夾
-              </button>
-              <button type="button" className="upload-trigger" onClick={() => fileInputRef.current?.click()}>
-                {isProcessing ? <Loader2 className="spin" size={16} /> : <Upload size={16} />}
-                匯入多個 CSV
-              </button>
-              <button type="button" className="upload-trigger ghost" onClick={() => clearImportedData()}>
-                清除累積資料
-              </button>
               <button type="button" className="upload-trigger ghost" onClick={onLogoutImports}>
                 登出管理
               </button>
             </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".csv"
-              multiple
-              hidden
-              onChange={(event) => {
-                const files = Array.from(event.target.files || [])
-                loadFiles(files)
-                event.target.value = ''
-              }}
-            />
-            <input
-              ref={folderInputRef}
-              type="file"
-              accept=".csv"
-              multiple
-              webkitdirectory=""
-              directory=""
-              hidden
-              onChange={(event) => {
-                const files = Array.from(event.target.files || []).filter((file) => file.name.toLowerCase().endsWith('.csv'))
-                loadFiles(files)
-                event.target.value = ''
-              }}
-            />
           </div>
           <div className="upload-stats">
+            <span className="upload-chip highlight">已匯入 {importedFiles.length} 期</span>
             <span className="upload-chip">現在資料：{isRealMode ? '真實資料' : '展示資料'}</span>
+            <span className="upload-chip">{isSharedMode ? '資料模式：GitHub 共用資料' : `資料模式：${storageMode}`}</span>
             <span className="upload-chip">共讀到：{uploadStats.totalRaw.toLocaleString()} 筆</span>
             <span className="upload-chip">排除掉：{uploadStats.totalExcluded.toLocaleString()} 筆</span>
             <span className="upload-chip">重複的：{uploadStats.duplicateCount.toLocaleString()} 筆</span>
-            <span className="upload-chip">{latestDataDate ? `最新資料：${latestDataDate}` : '你也可以把資料檔放進 public 自動讀取'}</span>
-            <span className="upload-chip">{persistedAt ? `上次累積保存：${new Date(persistedAt).toLocaleString('zh-TW')}` : '目前還沒有保存過累積資料'}</span>
+            <span className="upload-chip">{latestDataDate ? `最新資料：${latestDataDate}` : '目前尚未有可分析資料'}</span>
+            <span className="upload-chip">{persistedAt ? `最近同步：${new Date(persistedAt).toLocaleString('zh-TW')}` : '目前還沒有同步記錄'}</span>
           </div>
           {importMessage ? <p className="import-feedback success">{importMessage}</p> : null}
           {importError ? <p className="import-feedback error">{importError}</p> : null}
+          <div className="info-list">
+            <p>1. 把原始 CSV 放進專案的 `data/raw/`。</p>
+            <p>2. 執行 `npm run build:data` 產生共用資料檔。</p>
+            <p>3. push 到 GitHub 後，Pages 重新部署，所有人就會看到同一份資料。</p>
+          </div>
+          <div className="import-file-list">
+            <div className="panel-head compact">
+              <div>
+                <h3>已匯入檔案清單</h3>
+                <p>這份清單來自目前 repo 裡已經整理進共用資料檔的 CSV。</p>
+              </div>
+            </div>
+            {importedFiles.length > 0 ? (
+              <div className="table-shell">
+                <table className="records-table import-files-table">
+                  <thead>
+                    <tr>
+                      <th>檔名</th>
+                      <th>型態</th>
+                      <th>有效資料</th>
+                      <th>排除</th>
+                      <th>重複</th>
+                      <th>整理時間</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {importedFiles.map((file) => (
+                      <tr key={file.name}>
+                        <td>{file.name}</td>
+                        <td>{file.propertyType === 'presale' ? '預售屋' : '中古屋'}</td>
+                        <td>{file.validRecords}</td>
+                        <td>{file.excludedCount}</td>
+                        <td>{file.duplicateCount}</td>
+                        <td>{new Date(file.importedAt).toLocaleString('zh-TW')}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="empty-state">目前 Supabase 裡還沒有任何匯入期數。</div>
+            )}
+          </div>
         </section>
       ) : (
         loginCard
@@ -402,12 +566,62 @@ export function TainanDashboardView({ model, onSelectProject, canManageImports =
               </button>
             </div>
           </div>
+          <div className="filter-group">
+            <span className="filter-label">總價區間（萬）</span>
+            <div className="range-grid">
+              <label className="range-input">
+                <span>最低</span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  placeholder="例如 1000"
+                  value={totalPriceRange.min}
+                  onChange={(event) => setTotalPriceRange((previous) => ({ ...previous, min: event.target.value }))}
+                />
+              </label>
+              <label className="range-input">
+                <span>最高</span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  placeholder="例如 1500"
+                  value={totalPriceRange.max}
+                  onChange={(event) => setTotalPriceRange((previous) => ({ ...previous, max: event.target.value }))}
+                />
+              </label>
+            </div>
+          </div>
+          <div className="filter-group">
+            <span className="filter-label">建坪區間</span>
+            <div className="range-grid">
+              <label className="range-input">
+                <span>最小坪數</span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  placeholder="例如 20"
+                  value={totalPingRange.min}
+                  onChange={(event) => setTotalPingRange((previous) => ({ ...previous, min: event.target.value }))}
+                />
+              </label>
+              <label className="range-input">
+                <span>最大坪數</span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  placeholder="例如 45"
+                  value={totalPingRange.max}
+                  onChange={(event) => setTotalPingRange((previous) => ({ ...previous, max: event.target.value }))}
+                />
+              </label>
+            </div>
+          </div>
         </div>
       </section>
 
       <section className="dashboard-grid">
-        <ChartCard title="台南房價變化" subtitle="看看整個台南的房價和成交筆數怎麼變。">
-          <div className="chart-wrap large">
+        <ChartCard title="台南房價變化" subtitle="看看整個台南的房價和成交筆數怎麼變。" actions={<DownloadChartButton chartRef={cityTrendRef} fileName="台南房價變化" />}>
+          <div className="chart-wrap large" ref={cityTrendRef}>
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={cityTrend} margin={{ top: 12, right: 16, left: -18, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eadfce" />
@@ -490,8 +704,8 @@ export function TainanDashboardView({ model, onSelectProject, canManageImports =
         </div>
 
         <div className="dashboard-grid">
-          <ChartCard title="這一區的價格變化" subtitle="看看這一區的房價和成交筆數怎麼變。">
-            <div className="chart-wrap large">
+          <ChartCard title="這一區的價格變化" subtitle="看看這一區的房價和成交筆數怎麼變。" actions={<DownloadChartButton chartRef={districtTrendRef} fileName={`${selectedDistrict}-價格變化`} />}>
+            <div className="chart-wrap large" ref={districtTrendRef}>
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={districtTrend} margin={{ top: 12, right: 16, left: -18, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eadfce" />
@@ -652,8 +866,8 @@ export function TainanDashboardView({ model, onSelectProject, canManageImports =
         </div>
       </section>
 
-      <ChartCard title="幾個行政區一起比" subtitle="把幾個區放在一起，比較誰比較貴。">
-        <div className="chart-wrap compare">
+      <ChartCard title="幾個行政區一起比" subtitle="把幾個區放在一起，比較誰比較貴。" actions={<DownloadChartButton chartRef={comparisonTrendRef} fileName="行政區價格比較" />}>
+        <div className="chart-wrap compare" ref={comparisonTrendRef}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={comparisonData} margin={{ top: 12, right: 16, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eadfce" />

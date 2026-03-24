@@ -168,6 +168,11 @@
   gap: 10px;
 }
 
+.scenario-panel {
+  border-radius: 28px;
+  padding: 22px;
+}
+
 .filter-label {
   color: #7a6858;
   font-size: 13px;
@@ -230,6 +235,22 @@
   justify-content: flex-end;
 }
 
+.chart-download-btn,
+.table-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(130, 101, 69, 0.16);
+  background: #fffaf3;
+  color: #6b573f;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
 .upload-trigger.secondary,
 .upload-trigger.ghost {
   background: #fffaf3;
@@ -263,6 +284,12 @@
   font-weight: 700;
 }
 
+.upload-chip.highlight {
+  background: linear-gradient(135deg, #a35f20, #d3892e);
+  color: #fff8ee;
+  border-color: transparent;
+}
+
 .import-feedback {
   margin: 14px 0 0;
   padding: 12px 14px;
@@ -281,6 +308,17 @@
   color: #b33d24;
   background: rgba(188, 59, 36, 0.1);
   border: 1px solid rgba(188, 59, 36, 0.18);
+}
+
+.import-file-list {
+  margin-top: 18px;
+  display: grid;
+  gap: 12px;
+}
+
+.import-files-table td:last-child,
+.import-files-table th:last-child {
+  text-align: right;
 }
 
 .spin {
@@ -924,6 +962,53 @@
   gap: 10px;
 }
 
+.hero-actions-row {
+  margin-top: 14px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.dashboard-hero-pro {
+  margin-bottom: 18px;
+}
+
+.hero-copy-compact {
+  padding: 26px 30px;
+}
+
+.range-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.range-input {
+  display: grid;
+  gap: 8px;
+  color: #6b573f;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.range-input input {
+  min-height: 42px;
+  border-radius: 14px;
+  border: 1px solid rgba(130, 101, 69, 0.16);
+  background: #fffaf3;
+  color: #312318;
+  padding: 0 12px;
+  font-size: 0.98rem;
+}
+
+.empty-state {
+  border-radius: 18px;
+  border: 1px dashed rgba(130, 101, 69, 0.2);
+  background: rgba(255, 255, 255, 0.62);
+  color: #7a6858;
+  padding: 18px;
+  font-weight: 700;
+}
+
 .admin-login-panel {
   border-radius: 28px;
   padding: 22px;
@@ -975,7 +1060,8 @@
   .compact-hero,
   .hero-summary-grid,
   .steps-grid,
-  .persona-grid {
+  .persona-grid,
+  .range-grid {
     grid-template-columns: 1fr;
   }
 

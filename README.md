@@ -1,16 +1,39 @@
-# React + Vite
+# TainanSpot
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+台南房價分析網站，前端使用 React + Vite，部署在 GitHub Pages。
 
-Currently, two official plugins are available:
+## 資料模式
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+這個專案現在使用 **GitHub 共用資料管線**：
 
-## React Compiler
+- 原始 CSV 放在 `data/raw/`
+- 執行 `npm run build:data`
+- 會自動整理成 `public/data/manifest.json` 和 `public/data/districts/*.json`
+- GitHub Actions 部署時也會自動先跑一次資料整理
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+這樣重新部署後，所有人看到的都是同一份資料。
 
-## Expanding the ESLint configuration
+## 常用指令
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+npm install
+npm run build:data
+npm run build
+npm run dev
+```
+
+## 目錄重點
+
+- `data/raw/`：放每一期原始 CSV
+- `public/data/manifest.json`：首頁和全市摘要用的小檔
+- `public/data/districts/*.json`：各行政區明細資料
+- `scripts/build-shared-dataset.mjs`：把很多期 CSV 整理成摘要檔和分區明細檔
+- `src/hooks/useHousingData.js`：讀取共用資料檔
+
+## 更新資料流程
+
+1. 把新的 CSV 放進 `data/raw/`
+2. 執行 `npm run build:data`
+3. 確認網站資料正常
+4. commit + push
+5. GitHub Pages 重新部署後，全站同步更新

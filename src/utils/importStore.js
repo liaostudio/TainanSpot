@@ -1,5 +1,5 @@
 const DB_NAME = 'tainanspot-imports'
-const DB_VERSION = 1
+const DB_VERSION = 2
 const STORE_NAME = 'datasets'
 const DATASET_KEY = 'housing-data-v1'
 

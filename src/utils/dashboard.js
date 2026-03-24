@@ -29,6 +29,17 @@ function sum(values) {
   return values.reduce((total, value) => total + value, 0)
 }
 
+function getPercentile(numbers, percentile) {
+  if (!numbers || numbers.length === 0) return 0
+  const sorted = [...numbers].sort((a, b) => a - b)
+  const index = (sorted.length - 1) * percentile
+  const lower = Math.floor(index)
+  const upper = Math.ceil(index)
+  if (lower === upper) return sorted[lower]
+  const weight = index - lower
+  return sorted[lower] * (1 - weight) + sorted[upper] * weight
+}
+
 export function groupRecordsByDistrict(records) {
   const map = new Map()
   records.forEach((record) => {
@@ -162,19 +173,112 @@ export function buildRankings(records) {
   })
 
   return Object.entries(groups)
-    .map(([name, entries]) => ({
-      name,
-      medianPrice: Number(getMedian(entries.map((entry) => entry.unitPricePing)).toFixed(2)),
-      volume: entries.length,
-      type: entries.some((entry) => entry.type === 'presale')
-        ? entries.some((entry) => entry.type === 'existing')
-          ? '新舊都有'
-          : '預售屋'
-        : '中古屋社區',
-    }))
+    .map(([name, entries]) => {
+      const totalPrices = entries
+        .map((entry) => (entry.totalPrice > 0 ? entry.totalPrice / 10000 : 0))
+        .filter((price) => price > 0)
+      const lowTotal = getPercentile(totalPrices, 0.25)
+      const highTotal = getPercentile(totalPrices, 0.75)
+      const maxYear = Math.max(...entries.map((entry) => entry.year || 0))
+
+      return {
+        name,
+        medianPrice: Number(getMedian(entries.map((entry) => entry.unitPricePing)).toFixed(2)),
+        volume: entries.length,
+        medianTotalPrice: Number(getMedian(totalPrices).toFixed(0)),
+        totalPriceBand: {
+          low: Number(lowTotal.toFixed(0)),
+          high: Number(highTotal.toFixed(0)),
+        },
+        totalPriceBandLabel:
+          totalPrices.length > 0 ? `${Math.round(lowTotal)} - ${Math.round(highTotal)} 萬` : '-',
+        latestYear: maxYear,
+        type: entries.some((entry) => entry.type === 'presale')
+          ? entries.some((entry) => entry.type === 'existing')
+            ? '新舊都有'
+            : '預售屋'
+          : '中古屋社區',
+      }
+    })
     .filter((item) => item.medianPrice > 0)
     .sort((a, b) => b.volume - a.volume)
     .slice(0, 8)
+}
+
+export function buildTotalPriceBand(records) {
+  const totalPrices = records
+    .map((record) => (record.totalPrice > 0 ? record.totalPrice / 10000 : 0))
+    .filter((price) => price > 0)
+
+  if (totalPrices.length === 0) {
+    return {
+      median: 0,
+      low: 0,
+      high: 0,
+      label: '-',
+    }
+  }
+
+  const low = getPercentile(totalPrices, 0.25)
+  const high = getPercentile(totalPrices, 0.75)
+  const median = getMedian(totalPrices)
+
+  return {
+    median: Number(median.toFixed(0)),
+    low: Number(low.toFixed(0)),
+    high: Number(high.toFixed(0)),
+    label: `${Math.round(low)} - ${Math.round(high)} 萬`,
+  }
+}
+
+export function filterRecordsByScenario(records, scenario) {
+  if (scenario === 'starter') {
+    return records.filter((record) => record.roomCount === 1 || record.roomCount === 2)
+  }
+
+  if (scenario === 'upgrade') {
+    return records.filter((record) => record.roomCount === 3 || record.roomCount >= 4)
+  }
+
+  return records
+}
+
+export function summarizeDistrictRecords(records) {
+  if (!records || records.length === 0) {
+    return {
+      price: 0,
+      yoy: 0,
+      volume: 0,
+    }
+  }
+
+  const maxYear = Math.max(...records.map((record) => record.year || 0))
+  const current = records.filter((record) => record.year === maxYear)
+  const previous = records.filter((record) => record.year === maxYear - 1)
+  const currentMedian = getMedian(current.map((record) => record.unitPricePing))
+  const previousMedian = getMedian(previous.map((record) => record.unitPricePing))
+  const yoy = previousMedian > 0 ? ((currentMedian - previousMedian) / previousMedian) * 100 : 0
+
+  return {
+    price: Number(currentMedian.toFixed(2)),
+    yoy: Number(yoy.toFixed(1)),
+    volume: current.length || records.length,
+  }
+}
+
+export function buildValueProjects(records, districtAveragePrice) {
+  if (!records || records.length === 0 || !districtAveragePrice) return []
+
+  return buildRankings(records)
+    .filter((project) => project.volume >= 5)
+    .filter((project) => project.medianPrice < districtAveragePrice)
+    .filter((project) => project.latestYear >= 2025)
+    .sort((a, b) => {
+      const scoreA = (districtAveragePrice - a.medianPrice) * a.volume
+      const scoreB = (districtAveragePrice - b.medianPrice) * b.volume
+      return scoreB - scoreA
+    })
+    .slice(0, 6)
 }
 
 export function buildInsights(records) {
