@@ -202,7 +202,7 @@ export function ProjectDetailView({ detail, onBack }) {
         </div>
       </header>
 
-      <div className="dashboard-grid">
+      <section className="project-section project-section-primary">
         <ChartCard
           title="這個社區的價格變化"
           subtitle="看這個社區以前和現在的價格怎麼變。"
@@ -226,7 +226,9 @@ export function ProjectDetailView({ detail, onBack }) {
             </ResponsiveContainer>
           </div>
         </ChartCard>
+      </section>
 
+      <div className="project-detail-grid">
         <ChartCard title="房型和新舊比例" subtitle="看看大家買的是幾房，還有預售屋多不多。">
           <div className="stacked-mini-grid">
             <div className="chart-wrap small">
@@ -255,9 +257,7 @@ export function ProjectDetailView({ detail, onBack }) {
             </div>
           </div>
         </ChartCard>
-      </div>
 
-      <div className="dashboard-grid">
         <ChartCard title="不同樓層的差別" subtitle="看看高樓層和低樓層，價格和大小有沒有不同。">
           <div className="chart-wrap medium">
             <ResponsiveContainer width="100%" height="100%">
@@ -273,7 +273,9 @@ export function ProjectDetailView({ detail, onBack }) {
             </ResponsiveContainer>
           </div>
         </ChartCard>
+      </div>
 
+      <section className="project-section project-section-table">
         <section className="panel transactions-panel">
           <div className="panel-head">
             <div>
@@ -308,7 +310,7 @@ export function ProjectDetailView({ detail, onBack }) {
             </table>
           </div>
         </section>
-      </div>
+      </section>
     </div>
   )
 }
