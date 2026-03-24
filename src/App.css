@@ -1134,6 +1134,38 @@
   padding: 26px 30px;
 }
 
+.pro-hero-copy {
+  border-radius: 28px;
+}
+
+.pro-metric-grid {
+  margin-top: 0;
+}
+
+.pro-toolbar {
+  margin-top: 8px;
+}
+
+.upload-sop {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 14px 0 4px;
+}
+
+.upload-sop span {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(130, 101, 69, 0.14);
+  background: rgba(255, 255, 255, 0.72);
+  color: #6b573f;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .range-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

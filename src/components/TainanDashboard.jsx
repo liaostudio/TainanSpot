@@ -169,6 +169,13 @@ function DetailMetric({ label, value, helper }) {
 export function ProjectDetailView({ detail, onBack }) {
   const projectTrendRef = useRef(null)
   const topFloor = detail.floorStats?.[0]
+  const latestTrend = detail.trend.at(-1)
+  const previousTrend = detail.trend.at(-2)
+  const trendChange =
+    latestTrend && previousTrend && previousTrend.price > 0
+      ? Number((((latestTrend.price - previousTrend.price) / previousTrend.price) * 100).toFixed(1))
+      : null
+
   return (
     <div className="project-detail-page">
       <div className="project-back-row">
@@ -181,9 +188,9 @@ export function ProjectDetailView({ detail, onBack }) {
       <header className="project-hero panel">
         <div className="project-hero-top">
           <div className="project-hero-copy">
-            <p className="eyebrow">Community Profile</p>
+            <p className="eyebrow">Community Pricing Desk</p>
             <h2>{detail.projectName}</h2>
-            <p className="project-subtitle">先看這個社區大概多少錢、成交熱不熱，再往下看價格變化、樓層差異和最近成交明細。</p>
+            <p className="project-subtitle">這頁只做判價分析。先看這個社區現在價格在哪裡，再看歷史走勢、樓層差異和最近成交明細。</p>
             <div className="project-badges">
               <span className="upload-chip">以前成交過 {detail.stats.volume} 筆</span>
               <span className="upload-chip">平均價格 {formatPrice(detail.stats.medianPrice)} 萬/坪</span>
@@ -211,6 +218,7 @@ export function ProjectDetailView({ detail, onBack }) {
 
         <div className="project-metric-grid">
           <DetailMetric label="平均價格" value={`${formatPrice(detail.stats.medianPrice)} 萬/坪`} helper="這個社區大多數成交的大概價格" />
+          <DetailMetric label="最近變化" value={trendChange == null ? '-' : <TrendBadge value={trendChange} />} helper="和上一期相比，最近價格有沒有變動" />
           <DetailMetric label="平均總價" value={`${detail.stats.avgTotalPrice} 萬`} helper="大家大約花多少錢買這裡" />
           <DetailMetric label="平均建坪" value={`${detail.stats.avgPing} 坪`} helper="房子大約有多大" />
           <DetailMetric
@@ -233,8 +241,8 @@ export function ProjectDetailView({ detail, onBack }) {
           <section className="panel project-overview-card">
             <div className="panel-head">
               <div>
-                <h3>社區概況</h3>
-                <p>先用最簡單的方式認識這個社區。</p>
+                <h3>判價重點</h3>
+                <p>先看這個社區現在價格站在哪裡。</p>
               </div>
             </div>
             <div className="project-overview-list">
@@ -248,18 +256,18 @@ export function ProjectDetailView({ detail, onBack }) {
           <section className="panel project-overview-card">
             <div className="panel-head">
               <div>
-                <h3>快速看法</h3>
-                <p>幫你快速知道這個社區目前大概是什麼感覺。</p>
+                <h3>行情節奏</h3>
+                <p>把最近價格和成交節奏濃縮成幾個判斷點。</p>
               </div>
             </div>
             <div className="project-summary-list">
               <div>
-                <span>價格位置</span>
-                <strong>目前價格落在歷史區間中段附近</strong>
+                <span>最近價格</span>
+                <strong>{latestTrend ? `${formatPrice(latestTrend.price)} 萬/坪` : '目前資料不多'}</strong>
               </div>
               <div>
                 <span>成交節奏</span>
-                <strong>{detail.trend.at(-1)?.volume || detail.stats.volume} 筆近期成交可參考</strong>
+                <strong>{latestTrend?.volume || detail.stats.volume} 筆近期成交可參考</strong>
               </div>
               <div>
                 <span>主要產品</span>
@@ -277,7 +285,7 @@ export function ProjectDetailView({ detail, onBack }) {
       <section id="project-trend" className="project-section project-section-primary">
         <ChartCard
           title="這個社區的價格變化"
-          subtitle="看這個社區以前和現在的價格怎麼變。"
+          subtitle="主圖只回答一件事：這個社區現在的價格，在歷史上算高、算低，還是差不多。"
           actions={<DownloadChartButton chartRef={projectTrendRef} fileName={`${detail.projectName}-價格變化`} />}
         >
           <div className="chart-wrap large" ref={projectTrendRef}>
@@ -301,7 +309,23 @@ export function ProjectDetailView({ detail, onBack }) {
       </section>
 
       <div className="project-detail-grid">
-        <ChartCard title="房型和新舊比例" subtitle="看看大家買的是幾房，還有預售屋多不多。">
+        <ChartCard title="不同樓層的差別" subtitle="看樓層和價格、坪數的關係，這是談價時最常用的參考。">
+          <div className="chart-wrap medium">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={detail.floorStats} margin={{ top: 8, right: 16, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eadfce" />
+                <XAxis dataKey="level" tick={{ fontSize: 11, fill: '#7c6855' }} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: '#7c6855' }} tickLine={false} axisLine={false} />
+                <Tooltip contentStyle={{ borderRadius: 16, border: '1px solid #eadfce', background: 'rgba(255,252,247,0.98)' }} />
+                <Legend />
+                <Bar dataKey="avgPrice" name="平均價格" fill="#1d4ed8" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="avgPing" name="平均大小" fill="#d97706" radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </ChartCard>
+
+        <ChartCard title="房型和產品結構" subtitle="補充看大家最常買幾房，還有這個社區主要是預售屋還是中古屋。">
           <div className="stacked-mini-grid">
             <div className="chart-wrap small">
               <ResponsiveContainer width="100%" height="100%">
@@ -327,22 +351,6 @@ export function ProjectDetailView({ detail, onBack }) {
                 </PieChart>
               </ResponsiveContainer>
             </div>
-          </div>
-        </ChartCard>
-
-        <ChartCard title="不同樓層的差別" subtitle="看看高樓層和低樓層，價格和大小有沒有不同。">
-          <div className="chart-wrap medium">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={detail.floorStats} margin={{ top: 8, right: 16, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eadfce" />
-                <XAxis dataKey="level" tick={{ fontSize: 11, fill: '#7c6855' }} tickLine={false} axisLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: '#7c6855' }} tickLine={false} axisLine={false} />
-                <Tooltip contentStyle={{ borderRadius: 16, border: '1px solid #eadfce', background: 'rgba(255,252,247,0.98)' }} />
-                <Legend />
-                <Bar dataKey="avgPrice" name="平均價格" fill="#1d4ed8" radius={[8, 8, 0, 0]} />
-                <Bar dataKey="avgPing" name="平均大小" fill="#d97706" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
           </div>
         </ChartCard>
       </div>
@@ -495,18 +503,19 @@ export function TainanDashboardView({ model, onSelectProject, canManageImports =
   return (
     <div className="dashboard-page">
       <header className="dashboard-hero dashboard-hero-pro">
-        <div className="hero-copy hero-copy-compact">
-          <p className="eyebrow">Professional View</p>
-          <h1>專業分析頁</h1>
-          <p className="hero-lead">把篩選器、價量變化、行政區比較和匯入工具集中在同一頁，方便快速配案與議價。</p>
+        <div className="hero-copy hero-copy-compact pro-hero-copy">
+          <p className="eyebrow">Market Analysis Desk</p>
+          <h1>專業分析工作台</h1>
+          <p className="hero-lead">這頁只放分析和判斷會用到的東西：篩選器、關鍵數據、比較圖、社區排行和匯出工具。</p>
         </div>
-        <div className="metric-grid">
-          <MetricCard label="台南平均價格" value={`${formatPrice(citySummary.price)} 萬/坪`} helper="整體市場大概價格" accent="blue" />
-          <MetricCard label="最近有沒有變貴" value={<TrendBadge value={citySummary.yoy} />} helper="快速看現在是漲還是跌" accent="amber" />
-          <MetricCard label="總共有幾筆資料" value={`${citySummary.volume || 0} 筆`} helper={isRealMode ? `最新資料到 ${latestDataDate}` : '現在是展示用範例資料'} accent="slate" />
-          <MetricCard label="現在最貴的區" value={`${citySummary.hottest.name} ${formatPrice(citySummary.hottest.price)}`} helper="目前看起來最貴的行政區" accent="green" />
+        <div className="metric-grid pro-metric-grid">
+          <MetricCard label="目前分析行政區" value={selectedDistrict} helper="先確認現在正在看哪一區" accent="slate" />
+          <MetricCard label="行政區價格" value={`${formatPrice(selectedDistrictOverview?.price)} 萬/坪`} helper="這一區目前常見價格" accent="blue" />
+          <MetricCard label="行政區漲跌" value={<TrendBadge value={selectedDistrictOverview?.yoy} />} helper="快速看最近價格方向" accent="amber" />
+          <MetricCard label="行政區成交筆數" value={`${selectedDistrictOverview?.volume ?? '-'} 筆`} helper="筆數越多，代表這區越熱" accent="green" />
+          <MetricCard label="台南平均價格" value={`${formatPrice(citySummary.price)} 萬/坪`} helper={isRealMode ? `最新資料到 ${latestDataDate}` : '現在是展示用範例資料'} accent="slate" />
         </div>
-        <div className="hero-actions-row">
+        <div className="hero-actions-row pro-toolbar">
           <PdfReportButton onExport={exportPdfReport} />
         </div>
       </header>
@@ -516,7 +525,7 @@ export function TainanDashboardView({ model, onSelectProject, canManageImports =
           <div className="panel-head compact">
             <div>
               <h3>GitHub 共用資料管理</h3>
-              <p>這個網站現在改成 GitHub 共用資料模式。把每一期 CSV 放進 repo 的 `data/raw/`，重新部署後，所有人看到的就會是同一份最新資料。</p>
+              <p>把新一期 CSV 放進 `data/raw/`，重新部署後，全站就會更新成同一份資料。</p>
             </div>
             <div className="upload-actions">
               <button type="button" className="upload-trigger ghost" onClick={onLogoutImports}>
@@ -536,16 +545,16 @@ export function TainanDashboardView({ model, onSelectProject, canManageImports =
           </div>
           {importMessage ? <p className="import-feedback success">{importMessage}</p> : null}
           {importError ? <p className="import-feedback error">{importError}</p> : null}
-          <div className="info-list">
-            <p>1. 把原始 CSV 放進專案的 `data/raw/`。</p>
-            <p>2. 執行 `npm run build:data` 產生共用資料檔。</p>
-            <p>3. push 到 GitHub 後，Pages 重新部署，所有人就會看到同一份資料。</p>
+          <div className="upload-sop">
+            <span>1. 放進 `data/raw/`</span>
+            <span>2. 跑 `npm run build:data`</span>
+            <span>3. push 到 GitHub</span>
           </div>
           <div className="import-file-list">
             <div className="panel-head compact">
               <div>
                 <h3>已匯入檔案清單</h3>
-                <p>這份清單來自目前 repo 裡已經整理進共用資料檔的 CSV。</p>
+                <p>這份清單就是目前已整理進共用資料檔的期數。</p>
               </div>
             </div>
             {importedFiles.length > 0 ? (
@@ -587,8 +596,8 @@ export function TainanDashboardView({ model, onSelectProject, canManageImports =
       <section className="panel filter-panel">
         <div className="panel-head compact">
           <div>
-            <h3>快速切換</h3>
-            <p>你可以換時間、換行政區、換房子種類。</p>
+            <h3>分析篩選器</h3>
+            <p>先定義條件，再看下面所有圖和排行。</p>
           </div>
         </div>
         <div className="filter-row">
@@ -694,7 +703,7 @@ export function TainanDashboardView({ model, onSelectProject, canManageImports =
       </section>
 
       <section className="dashboard-grid">
-        <ChartCard title="台南房價變化" subtitle="看看整個台南的房價和成交筆數怎麼變。" actions={<DownloadChartButton chartRef={cityTrendRef} fileName="台南房價變化" />}>
+        <ChartCard title="台南全市價量走勢" subtitle="用一張主圖看整個台南目前的價格方向和成交熱度。" actions={<DownloadChartButton chartRef={cityTrendRef} fileName="台南房價變化" />}>
           <div className="chart-wrap large" ref={cityTrendRef}>
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={cityTrend} margin={{ top: 12, right: 16, left: -18, bottom: 0 }}>
@@ -712,7 +721,7 @@ export function TainanDashboardView({ model, onSelectProject, canManageImports =
           </div>
         </ChartCard>
 
-        <ChartCard title="台南哪裡比較貴" subtitle="顏色越深，通常代表那一區比較貴。">
+        <ChartCard title="行政區價格熱圖" subtitle="顏色越深代表價格越高，方便快速抓各區價格位置。">
           <div className="heatmap">
             {tainanGrid.map((cell) => {
               const overview = realOverviews.find((item) => item.name === cell.id)
@@ -749,8 +758,8 @@ export function TainanDashboardView({ model, onSelectProject, canManageImports =
         <section className="panel location-panel">
           <div className="panel-head compact">
             <div>
-              <h3>熱門社區切換</h3>
-              <p>你可以只看這一區裡面某一個熱門社區。</p>
+              <h3>社區焦點切換</h3>
+              <p>要看全區，或只盯某個熱門社區，都可以直接切換。</p>
             </div>
           </div>
           <div className="chip-row">
@@ -771,14 +780,14 @@ export function TainanDashboardView({ model, onSelectProject, canManageImports =
         </section>
 
         <div className="metric-grid district-metrics">
-          <MetricCard label="這一區的房價" value={`${formatPrice(selectedDistrictOverview?.price)} 萬/坪`} helper="這一區常見的價格" accent="blue" />
-          <MetricCard label="這一區有沒有變貴" value={<TrendBadge value={selectedDistrictOverview?.yoy} />} helper="可以快看最近是漲還是跌" accent="amber" />
-          <MetricCard label="這一區成交筆數" value={`${selectedDistrictOverview?.volume ?? '-'} 筆`} helper="數字越大，代表資料越多" accent="slate" />
-          <MetricCard label="簡單判斷" value={insights.health} helper={`${insights.structure} / ${insights.momentum}`} accent="green" />
+          <MetricCard label="行政區價格" value={`${formatPrice(selectedDistrictOverview?.price)} 萬/坪`} helper="這一區目前常見價格" accent="blue" />
+          <MetricCard label="行政區漲跌" value={<TrendBadge value={selectedDistrictOverview?.yoy} />} helper="快速看最近是漲還是跌" accent="amber" />
+          <MetricCard label="行政區成交筆數" value={`${selectedDistrictOverview?.volume ?? '-'} 筆`} helper="數字越大，代表成交越熱" accent="slate" />
+          <MetricCard label="市場判斷" value={insights.health} helper={`${insights.structure} / ${insights.momentum}`} accent="green" />
         </div>
 
         <div className="dashboard-grid">
-          <ChartCard title="這一區的價格變化" subtitle="看看這一區的房價和成交筆數怎麼變。" actions={<DownloadChartButton chartRef={districtTrendRef} fileName={`${selectedDistrict}-價格變化`} />}>
+          <ChartCard title="行政區價量走勢" subtitle="主圖用來判斷這一區價格方向和成交節奏。" actions={<DownloadChartButton chartRef={districtTrendRef} fileName={`${selectedDistrict}-價格變化`} />}>
             <div className="chart-wrap large" ref={districtTrendRef}>
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={districtTrend} margin={{ top: 12, right: 16, left: -18, bottom: 0 }}>
@@ -796,7 +805,7 @@ export function TainanDashboardView({ model, onSelectProject, canManageImports =
             </div>
           </ChartCard>
 
-          <ChartCard title="新房子還是舊房子" subtitle="看看大家買的是比較新的房子，還是比較舊的房子。">
+          <ChartCard title="屋齡結構" subtitle="補充看目前成交主力偏新屋還是偏舊屋。">
             <div className="chart-wrap medium">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -813,7 +822,7 @@ export function TainanDashboardView({ model, onSelectProject, canManageImports =
         </div>
 
         <div className="dashboard-grid">
-          <ChartCard title="大家買幾房" subtitle="看看這一區最常成交的是幾房。">
+          <ChartCard title="房型結構" subtitle="看這一區最常成交的是幾房。">
             <div className="chart-wrap medium">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -828,7 +837,7 @@ export function TainanDashboardView({ model, onSelectProject, canManageImports =
             </div>
           </ChartCard>
 
-          <ChartCard title="中古屋和預售屋" subtitle="看看大家比較常買哪一種。">
+          <ChartCard title="中古屋 / 預售屋" subtitle="看市場主力比較偏哪一種產品。">
             <div className="chart-wrap medium">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -845,7 +854,7 @@ export function TainanDashboardView({ model, onSelectProject, canManageImports =
         </div>
 
         <div className="dashboard-grid">
-          <ChartCard title="這一區熱不熱門" subtitle="成交筆數越多，通常代表這一區比較熱。">
+          <ChartCard title="成交熱度" subtitle="成交筆數越多，通常代表這一區目前比較熱。">
             <div className="chart-wrap medium">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={buildVolumeSeries(districtRecords, activeTab).length > 0 ? buildVolumeSeries(districtRecords, activeTab) : cityVolumeTrend} margin={{ top: 8, right: 16, left: -20, bottom: 0 }}>
@@ -862,8 +871,8 @@ export function TainanDashboardView({ model, onSelectProject, canManageImports =
           <section className="panel ai-panel">
             <div className="panel-head">
               <div>
-                <h3>電腦幫你快速看</h3>
-                <p>用幾個簡單小卡，幫你快看這一區現在的情況。</p>
+                <h3>快速判讀</h3>
+                <p>把這一區目前的市場狀況濃縮成幾張小卡。</p>
               </div>
             </div>
             <div className="insight-grid">
@@ -901,7 +910,7 @@ export function TainanDashboardView({ model, onSelectProject, canManageImports =
             <div className="panel-head">
               <div>
                 <h3>熱門社區排行</h3>
-                <p>按一下就能看那個社區更細的資料。</p>
+                <p>成交最活躍的社區通常最適合拿來抓區域行情。</p>
               </div>
               <Crown className="panel-badge" />
             </div>
@@ -924,7 +933,7 @@ export function TainanDashboardView({ model, onSelectProject, canManageImports =
             </div>
           </section>
 
-          <ChartCard title="熱門社區成交筆數" subtitle="看看哪個社區最近成交最多。">
+          <ChartCard title="熱門社區成交筆數" subtitle="比較哪幾個社區最近成交最多。">
             <div className="chart-wrap medium">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={rankings.slice(0, 6)} layout="vertical" margin={{ top: 8, right: 16, left: 12, bottom: 0 }}>
@@ -940,7 +949,7 @@ export function TainanDashboardView({ model, onSelectProject, canManageImports =
         </div>
       </section>
 
-      <ChartCard title="幾個行政區一起比" subtitle="把幾個區放在一起，比較誰比較貴。" actions={<DownloadChartButton chartRef={comparisonTrendRef} fileName="行政區價格比較" />}>
+      <ChartCard title="行政區價格比較" subtitle="把幾個行政區放在一起，比較誰比較貴、誰走得比較快。" actions={<DownloadChartButton chartRef={comparisonTrendRef} fileName="行政區價格比較" />}>
         <div className="chart-wrap compare" ref={comparisonTrendRef}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={comparisonData} margin={{ top: 12, right: 16, left: -20, bottom: 0 }}>
