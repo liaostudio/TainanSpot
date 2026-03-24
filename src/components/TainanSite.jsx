@@ -8,8 +8,6 @@ import {
   LockKeyhole,
   MapPinned,
   LogOut,
-  Search,
-  ShieldCheck,
 } from 'lucide-react'
 import {
   ResponsiveContainer,
@@ -130,21 +128,22 @@ function AdminLoginCard({ password, onPasswordChange, onSubmit, authError }) {
 }
 
 function HomePage({ model, onNavigate, onOpenProject }) {
-  const topDistricts = model.realOverviews.slice(0, 6)
+  const topDistricts = model.realOverviews.slice(0, 8)
+  const hottestProjects = model.rankings.slice(0, 6)
 
   return (
     <div className="page-stack">
-      <section className="site-hero panel">
+      <section className="site-hero panel dashboard-hero">
         <div className="site-hero-copy">
-          <p className="eyebrow">Consumer First</p>
-          <h1>先用白話看懂台南房價，再決定要不要深入研究。</h1>
+          <p className="eyebrow">Tainan Market Dashboard</p>
+          <h1>用數據和趨勢圖，快速看懂台南房價。</h1>
           <p className="site-hero-lead">
-            如果你是買房的人，先看這一區大概多少錢、最近有沒有變貴、哪幾個社區最熱門。
-            如果你是房仲，再進專業分析頁看完整資料。
+            先看全市價格在哪裡、最近走勢怎麼變，再往下看行政區和社區排行。
+            這個首頁的重點只有一件事：讓你 30 秒內掌握現在市場大概在哪裡。
           </p>
           <div className="cta-row">
             <button type="button" className="cta-primary" onClick={() => onNavigate('district')}>
-              先看行政區
+              直接看行政區分析
               <ArrowRight size={16} />
             </button>
             <button type="button" className="cta-secondary" onClick={() => onNavigate('pro')}>
@@ -152,16 +151,35 @@ function HomePage({ model, onNavigate, onOpenProject }) {
             </button>
           </div>
         </div>
-        <div className="hero-summary-grid">
-          <MetricCard label="台南平均價格" value={`${formatPrice(model.citySummary.price)} 萬/坪`} helper="整體市場大概價格" accent="blue" />
-          <MetricCard label="最近有沒有變貴" value={<TrendBadge value={model.citySummary.yoy} />} helper="快速看漲跌" accent="amber" />
-          <MetricCard label="成交筆數" value={`${model.citySummary.volume} 筆`} helper={model.latestDataDate ? `最新到 ${model.latestDataDate}` : '展示資料模式'} accent="slate" />
-          <MetricCard label="最受注意的區" value={model.citySummary.hottest?.name ?? '-'} helper="目前價格最高的行政區" accent="green" />
+        <div className="dashboard-hero-side">
+          <div className="hero-highlight-card">
+            <span>全市平均價格</span>
+            <strong>{formatPrice(model.citySummary.price)} 萬/坪</strong>
+            <p>{model.latestDataDate ? `資料最新到 ${model.latestDataDate}` : '展示資料模式'}</p>
+          </div>
+          <div className="hero-highlight-card">
+            <span>最近有沒有變貴</span>
+            <strong><TrendBadge value={model.citySummary.yoy} /></strong>
+            <p>快速看全市目前是升溫還是盤整</p>
+          </div>
+          <div className="hero-highlight-card">
+            <span>成交筆數</span>
+            <strong>{model.citySummary.volume} 筆</strong>
+            <p>資料越多，越能代表現在市場狀況</p>
+          </div>
         </div>
       </section>
 
+      <div className="metric-grid">
+        <MetricCard label="全市平均價格" value={`${formatPrice(model.citySummary.price)} 萬/坪`} helper="目前整體市場大概價格" accent="blue" />
+        <MetricCard label="最近有沒有變貴" value={<TrendBadge value={model.citySummary.yoy} />} helper="快速看漲跌方向" accent="amber" />
+        <MetricCard label="成交筆數" value={`${model.citySummary.volume} 筆`} helper={model.latestDataDate ? `最新到 ${model.latestDataDate}` : '展示資料模式'} accent="slate" />
+        <MetricCard label="最熱行政區" value={model.citySummary.hottest?.name ?? '-'} helper="目前價格最高的行政區" accent="green" />
+        <MetricCard label="最親民行政區" value={model.citySummary.mostAffordable?.name ?? '-'} helper="目前價格相對低的行政區" accent="slate" />
+      </div>
+
       <section className="dashboard-grid">
-        <ChartCard title="台南房價變化" subtitle="先看整體走勢，知道現在市場是在往上還是比較平。">
+        <ChartCard title="台南全市價格走勢" subtitle="先看全市趨勢，知道市場現在是在往上、往下，還是盤整。">
           <div className="chart-wrap large">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={model.cityTrend} margin={{ top: 12, right: 16, left: -18, bottom: 0 }}>
@@ -180,8 +198,8 @@ function HomePage({ model, onNavigate, onOpenProject }) {
         <section className="panel simple-list-panel">
           <div className="panel-head">
             <div>
-              <h3>先看熱門行政區</h3>
-              <p>這些區最近資料比較多，也比較容易先看出市場感覺。</p>
+              <h3>行政區排行</h3>
+              <p>先看哪些區目前價格高、資料多，最容易抓到整體市場位置。</p>
             </div>
           </div>
           <div className="simple-list">
@@ -207,73 +225,39 @@ function HomePage({ model, onNavigate, onOpenProject }) {
       </section>
 
       <section className="dashboard-grid">
-        <section className="panel">
+        <ChartCard title="全市成交筆數變化" subtitle="看成交筆數有沒有放大，能幫助判斷市場熱度。">
+          <div className="chart-wrap large">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={model.cityVolumeTrend} margin={{ top: 12, right: 16, left: -18, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eadfce" />
+                <XAxis dataKey="period" tick={{ fontSize: 11, fill: '#7c6855' }} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: '#8b6b36' }} tickLine={false} axisLine={false} />
+                <Tooltip contentStyle={{ borderRadius: 16, border: '1px solid #eadfce', background: 'rgba(255,252,247,0.98)' }} />
+                <Bar dataKey="volume" name="成交筆數" fill="#d4a15f" radius={[8, 8, 0, 0]} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </ChartCard>
+
+        <section className="panel simple-list-panel">
           <div className="panel-head">
             <div>
-              <h3>這個網站怎麼用</h3>
-              <p>先用最簡單的方式找資料，不用一開始就看一堆圖。</p>
+              <h3>熱門社區排行</h3>
+              <p>直接從成交最活躍的社區開始看，最適合拿來判斷行情。</p>
             </div>
           </div>
-          <div className="steps-grid">
-            <article className="step-card">
-              <span>1</span>
-              <strong>先挑行政區</strong>
-              <p>先看哪一區價格大概多少、最近有沒有變貴。</p>
-            </article>
-            <article className="step-card">
-              <span>2</span>
-              <strong>再看熱門社區</strong>
-              <p>找出大家最常買、最常成交的社區。</p>
-            </article>
-            <article className="step-card">
-              <span>3</span>
-              <strong>最後看專業資料</strong>
-              <p>如果你是房仲，再進專業分析頁看完整圖表。</p>
-            </article>
+          <div className="simple-list">
+            {hottestProjects.map((project) => (
+              <button key={project.name} type="button" className="simple-list-item" onClick={() => onOpenProject(project.name)}>
+                <div>
+                  <strong>{project.name}</strong>
+                  <p>{project.type} / {project.volume} 筆成交</p>
+                </div>
+                <span>{formatPrice(project.medianPrice)} 萬/坪</span>
+              </button>
+            ))}
           </div>
         </section>
-
-        <section className="panel cta-panel">
-          <div className="panel-head">
-            <div>
-              <h3>你是誰？</h3>
-              <p>不同的人，適合看的頁面不一樣。</p>
-            </div>
-          </div>
-          <div className="persona-grid">
-            <button type="button" className="persona-card" onClick={() => onNavigate('district')}>
-              <Search size={20} />
-              <strong>我是買房的人</strong>
-              <p>想先看哪一區比較適合我。</p>
-            </button>
-            <button type="button" className="persona-card" onClick={() => onNavigate('pro')}>
-              <BarChart3 size={20} />
-              <strong>我是房仲</strong>
-              <p>我要更多篩選器、比較圖和 GitHub 資料管理。</p>
-            </button>
-            <button type="button" className="persona-card" onClick={() => onNavigate('about')}>
-              <ShieldCheck size={20} />
-              <strong>我想先看資料怎麼來</strong>
-              <p>想知道這些數字怎麼算、哪些資料有排除。</p>
-            </button>
-          </div>
-        </section>
-      </section>
-
-      <section className="panel simple-list-panel">
-        <div className="panel-head">
-          <div>
-            <h3>熱門社區入口</h3>
-            <p>從這裡直接進社區頁，先看最常被查的地方。</p>
-          </div>
-        </div>
-        <div className="simple-chip-list">
-          {model.rankings.slice(0, 8).map((project) => (
-            <button key={project.name} type="button" className="chip" onClick={() => onOpenProject(project.name)}>
-              {project.name}
-            </button>
-          ))}
-        </div>
       </section>
     </div>
   )
@@ -282,12 +266,12 @@ function HomePage({ model, onNavigate, onOpenProject }) {
 function DistrictPage({ model, onNavigate, onOpenProject }) {
   return (
     <div className="page-stack">
-      <section className="site-hero panel compact-hero">
+      <section className="site-hero panel compact-hero dashboard-hero">
         <div className="site-hero-copy">
-          <p className="eyebrow">District Page</p>
-          <h1>{model.selectedDistrict} 這一區好不好看？</h1>
+          <p className="eyebrow">District Analysis</p>
+          <h1>{model.selectedDistrict} 區行情分析</h1>
           <p className="site-hero-lead">
-            先看這一區大概多少錢、最近有沒有變貴，再看哪些社區比較熱門。
+            先看指標，再看趨勢圖，最後看社區排行。這頁只做一件事：幫你快速判斷這一區的行情位置。
           </p>
         </div>
         <label className="district-picker">
@@ -305,8 +289,8 @@ function DistrictPage({ model, onNavigate, onOpenProject }) {
       <section className="panel scenario-panel">
         <div className="panel-head compact">
           <div>
-            <h3>我是哪一種買方</h3>
-            <p>按一下就能快速切到適合你的房型與價格視角。</p>
+            <h3>分析視角</h3>
+            <p>切換首購或換屋，下面的價格與社區排行會一起更新。</p>
           </div>
         </div>
         <div className="chip-row">
@@ -377,48 +361,50 @@ function DistrictPage({ model, onNavigate, onOpenProject }) {
         </ChartCard>
       </section>
 
-      <section className="panel simple-list-panel">
-        <div className="panel-head">
-          <div>
-            <h3>這一區熱門社區</h3>
-            <p>先從大家最常成交的社區開始看，通常最容易抓到區域感覺。</p>
+      <section className="dashboard-grid">
+        <section className="panel simple-list-panel">
+          <div className="panel-head">
+            <div>
+              <h3>這一區熱門社區</h3>
+              <p>先從成交最活躍的社區開始看，最容易抓到區域主流行情。</p>
+            </div>
           </div>
-        </div>
-        <div className="simple-list">
-          {model.scenarioRankings.map((project) => (
-            <button key={project.name} type="button" className="simple-list-item" onClick={() => onOpenProject(project.name)}>
-              <div>
-                <strong>{project.name}</strong>
-                <p>{project.type} / 主流總價 {project.totalPriceBandLabel}</p>
-              </div>
-              <span>{formatPrice(project.medianPrice)} 萬/坪</span>
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="panel simple-list-panel">
-        <div className="panel-head">
-          <div>
-            <h3>高性價比社區</h3>
-            <p>這些社區成交筆數穩定，而且價格比本區平均更親切，適合務實型買方先看。</p>
-          </div>
-        </div>
-        <div className="simple-list">
-          {model.valueProjects.length > 0 ? (
-            model.valueProjects.map((project) => (
+          <div className="simple-list">
+            {model.scenarioRankings.map((project) => (
               <button key={project.name} type="button" className="simple-list-item" onClick={() => onOpenProject(project.name)}>
                 <div>
                   <strong>{project.name}</strong>
-                  <p>{project.volume} 筆成交 / 主流總價 {project.totalPriceBandLabel}</p>
+                  <p>{project.type} / 主流總價 {project.totalPriceBandLabel}</p>
                 </div>
                 <span>{formatPrice(project.medianPrice)} 萬/坪</span>
               </button>
-            ))
-          ) : (
-            <div className="empty-state">目前這個條件下，還沒有特別明顯的高 CP 值社區。</div>
-          )}
-        </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="panel simple-list-panel">
+          <div className="panel-head">
+            <div>
+              <h3>高性價比社區</h3>
+              <p>成交穩定、價格比本區平均更親切的社區，適合先拿來比較。</p>
+            </div>
+          </div>
+          <div className="simple-list">
+            {model.valueProjects.length > 0 ? (
+              model.valueProjects.map((project) => (
+                <button key={project.name} type="button" className="simple-list-item" onClick={() => onOpenProject(project.name)}>
+                  <div>
+                    <strong>{project.name}</strong>
+                    <p>{project.volume} 筆成交 / 主流總價 {project.totalPriceBandLabel}</p>
+                  </div>
+                  <span>{formatPrice(project.medianPrice)} 萬/坪</span>
+                </button>
+              ))
+            ) : (
+              <div className="empty-state">目前這個條件下，還沒有特別明顯的高 CP 值社區。</div>
+            )}
+          </div>
+        </section>
       </section>
 
       <section className="district-cta-row">
