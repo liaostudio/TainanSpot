@@ -17,6 +17,7 @@ import {
   Bar,
   Line,
 } from 'recharts'
+import { timeTabs } from '../data/dashboardData.js'
 import { useDashboardModel } from '../hooks/useDashboardModel.js'
 import { formatPrice, sampleSeries } from '../utils/dashboard.js'
 import { MetricCard } from './MetricCard.jsx'
@@ -37,6 +38,16 @@ const sectionTabs = [
   { id: 'pro', label: '專業分析', icon: BarChart3 },
   { id: 'about', label: '資料說明', icon: FileText },
 ]
+const propertyTypeLabels = {
+  existing: '中古屋',
+  presale: '預售屋',
+}
+const buildingTypeLabels = {
+  elevator: '大樓/華廈',
+  apartment: '公寓',
+  house: '透天',
+  store: '店面/商辦',
+}
 const ADMIN_SESSION_KEY = 'tainanspot-admin-auth'
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || '1234'
 
@@ -135,7 +146,14 @@ function AdminLoginCard({ password, onPasswordChange, onSubmit, authError }) {
 }
 
 function HomePage({ model, onJump }) {
-  const topDistricts = model.realOverviews.slice(0, 8)
+  const [rankingSort, setRankingSort] = useState('price')
+  const topDistricts = useMemo(() => {
+    const base = [...model.realOverviews]
+    if (rankingSort === 'volume') {
+      return base.sort((a, b) => b.volume - a.volume).slice(0, 8)
+    }
+    return base.sort((a, b) => b.price - a.price).slice(0, 8)
+  }, [model.realOverviews, rankingSort])
   const sampledCityTrend = sampleSeries(model.cityTrend, 24)
 
   return (
@@ -192,6 +210,16 @@ function HomePage({ model, onJump }) {
 
       <section className="dashboard-grid">
         <ChartCard title="全市價格趨勢" subtitle="先看整體市場位置，知道台南現在是在往上、往下，還是盤整。">
+          <div className="panel-filter-row">
+            <div className="time-tabs compact">
+              {timeTabs.map((tab) => (
+                <button key={tab.id} type="button" className={tab.id === model.activeTab ? 'is-active' : ''} onClick={() => model.setActiveTab(tab.id)}>
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            <p className="stat-note">統計方式：依所選時間區間，彙整全市平均價格與成交筆數。</p>
+          </div>
           <div className="chart-wrap large">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={sampledCityTrend} margin={{ top: 12, right: 16, left: -18, bottom: 0 }}>
@@ -213,6 +241,26 @@ function HomePage({ model, onJump }) {
               <h3>行政區價格排行</h3>
               <p>先看哪些區價格高、成交多，最容易抓到全市行情結構。</p>
             </div>
+          </div>
+          <div className="panel-filter-row">
+            <div className="time-tabs compact">
+              <button type="button" className={rankingSort === 'price' ? 'is-active' : ''} onClick={() => setRankingSort('price')}>
+                價格高到低
+              </button>
+              <button type="button" className={rankingSort === 'volume' ? 'is-active' : ''} onClick={() => setRankingSort('volume')}>
+                成交多到少
+              </button>
+            </div>
+            <p className="stat-note">
+              統計方式：依最新資料期各行政區{rankingSort === 'price' ? '平均價格' : '成交筆數'}排序。
+            </p>
+            <p className="stat-note">
+              目前已套用：
+              {[...model.propertyTypeFilter.map((type) => propertyTypeLabels[type]), ...model.buildingFilter.map((type) => buildingTypeLabels[type])]
+                .filter(Boolean)
+                .join(' / ')}
+              篩選。
+            </p>
           </div>
           <div className="simple-list">
             {topDistricts.map((district) => (
@@ -238,6 +286,16 @@ function HomePage({ model, onJump }) {
 
       <section>
         <ChartCard title="全市成交熱度趨勢" subtitle="用趨勢線看成交筆數是放大、縮小，還是維持平穩。">
+          <div className="panel-filter-row">
+            <div className="time-tabs compact">
+              {timeTabs.map((tab) => (
+                <button key={tab.id} type="button" className={tab.id === model.activeTab ? 'is-active' : ''} onClick={() => model.setActiveTab(tab.id)}>
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            <p className="stat-note">統計方式：依所選時間區間，觀察全市成交筆數變化。</p>
+          </div>
           <div className="chart-wrap large">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={model.cityVolumeTrend} margin={{ top: 12, right: 16, left: -18, bottom: 0 }}>
@@ -285,13 +343,66 @@ function DistrictPage({ model, onJump }) {
       <div className="metric-grid">
         <MetricCard label="區域平均價格" value={`${formatPrice(model.scenarioDistrictOverview?.price)} 萬/坪`} helper="先看這區大概價格" accent="blue" />
         <MetricCard label="區域趨勢方向" value={<TrendBadge value={model.scenarioDistrictOverview?.yoy} />} helper="快速看最近漲跌" accent="amber" />
-        <MetricCard label="中位數總價" value={model.districtTotalPriceBand.label} helper="這區常見成交總價的中間值" accent="slate" />
+        <MetricCard label="近一年平均總價" value={model.districtTotalPriceBand.label} helper="用近一年成交資料算出的平均總價" accent="slate" />
         <MetricCard label="區域成交筆數" value={`${model.scenarioDistrictOverview?.volume ?? '-'} 筆`} helper="筆數越多，代表這區越熱" accent="slate" />
         <MetricCard label="主力房型" value={model.scenarioRoomMix[0]?.name ?? '-'} helper="先看這區主要成交哪一種房型" accent="green" />
       </div>
+      <p className="stat-note">統計範圍：近 12 個月成交資料。</p>
+
+      <section className="panel scenario-panel">
+        <div className="panel-head compact">
+          <div>
+            <h3>區域趨勢篩選器</h3>
+            <p>下面的價格趨勢會依照你選的時間、產品和建物型態一起更新。</p>
+          </div>
+        </div>
+        <div className="filter-groups">
+          <div className="filter-group">
+            <span className="filter-label">時間區間</span>
+            <div className="time-tabs compact">
+              {timeTabs.map((tab) => (
+                <button key={tab.id} type="button" className={tab.id === model.activeTab ? 'is-active' : ''} onClick={() => model.setActiveTab(tab.id)}>
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="filter-group">
+            <span className="filter-label">產品類型</span>
+            <div className="chip-row">
+              <button type="button" className={model.propertyTypeFilter.includes('existing') ? 'chip active' : 'chip'} onClick={() => model.togglePropertyType('existing')}>
+                中古屋
+              </button>
+              <button type="button" className={model.propertyTypeFilter.includes('presale') ? 'chip active' : 'chip'} onClick={() => model.togglePropertyType('presale')}>
+                預售屋
+              </button>
+            </div>
+          </div>
+          <div className="filter-group">
+            <span className="filter-label">建物型態</span>
+            <div className="chip-row">
+              <button type="button" className={model.buildingFilter.includes('elevator') ? 'chip active' : 'chip'} onClick={() => model.toggleBuildingType('elevator')}>
+                大樓 / 華廈
+              </button>
+              <button type="button" className={model.buildingFilter.includes('apartment') ? 'chip active' : 'chip'} onClick={() => model.toggleBuildingType('apartment')}>
+                公寓
+              </button>
+              <button type="button" className={model.buildingFilter.includes('house') ? 'chip active' : 'chip'} onClick={() => model.toggleBuildingType('house')}>
+                透天
+              </button>
+              <button type="button" className={model.buildingFilter.includes('store') ? 'chip active' : 'chip'} onClick={() => model.toggleBuildingType('store')}>
+                店面 / 商辦
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <section className="dashboard-grid">
         <ChartCard title="區域價格趨勢" subtitle="先看這一區最近是變貴、變便宜，還是大致持平。">
+          <div className="panel-filter-row">
+            <p className="stat-note">統計方式：依目前篩選條件，按時間區間計算區域平均價格與成交筆數。</p>
+          </div>
           <div className="chart-wrap large">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={model.scenarioDistrictTrend} margin={{ top: 12, right: 16, left: -18, bottom: 0 }}>

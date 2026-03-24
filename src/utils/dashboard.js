@@ -87,6 +87,16 @@ export function checkBuildingMatch(record, buildingFilter) {
 }
 
 export function summarizeCity(overviews) {
+  if (!overviews || overviews.length === 0) {
+    return {
+      price: 0,
+      yoy: 0,
+      volume: 0,
+      hottest: { name: '-' },
+      mostAffordable: { name: '-' },
+    }
+  }
+
   const totalVolume = overviews.reduce((sum, item) => sum + item.volume, 0)
   const medianLike =
     overviews.reduce((sum, item) => sum + item.price * item.volume, 0) / totalVolume
@@ -226,7 +236,32 @@ export function buildRankings(records) {
 }
 
 export function buildTotalPriceBand(records) {
-  const totalPrices = records
+  if (!records || records.length === 0) {
+    return {
+      median: 0,
+      low: 0,
+      high: 0,
+      average: 0,
+      label: '-',
+    }
+  }
+
+  const latestRecord = records.reduce((latest, record) => {
+    const currentValue = (record.year || 0) * 100 + (record.month || 0)
+    const latestValue = (latest.year || 0) * 100 + (latest.month || 0)
+    return currentValue > latestValue ? record : latest
+  }, records[0])
+
+  const latestMonthIndex = (latestRecord.year || 0) * 12 + ((latestRecord.month || 1) - 1)
+  const recentYearRecords = records.filter((record) => {
+    const monthIndex = (record.year || 0) * 12 + ((record.month || 1) - 1)
+    const diff = latestMonthIndex - monthIndex
+    return diff >= 0 && diff < 12
+  })
+
+  const basisRecords = recentYearRecords.length > 0 ? recentYearRecords : records
+
+  const totalPrices = basisRecords
     .map((record) => (record.totalPrice > 0 ? record.totalPrice / 10000 : 0))
     .filter((price) => price > 0)
 
@@ -235,6 +270,7 @@ export function buildTotalPriceBand(records) {
       median: 0,
       low: 0,
       high: 0,
+      average: 0,
       label: '-',
     }
   }
@@ -242,12 +278,14 @@ export function buildTotalPriceBand(records) {
   const low = getPercentile(totalPrices, 0.25)
   const high = getPercentile(totalPrices, 0.75)
   const median = getMedian(totalPrices)
+  const average = sum(totalPrices) / totalPrices.length
 
   return {
     median: Number(median.toFixed(0)),
     low: Number(low.toFixed(0)),
     high: Number(high.toFixed(0)),
-    label: `${Math.round(median)} 萬`,
+    average: Number(average.toFixed(0)),
+    label: `${Math.round(average)} 萬`,
   }
 }
 

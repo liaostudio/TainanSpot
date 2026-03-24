@@ -34,8 +34,6 @@ export function useDashboardModel() {
   const [buyerScenario, setBuyerScenario] = useState('all')
   const [propertyTypeFilter, setPropertyTypeFilter] = useState(['existing', 'presale'])
   const [buildingFilter, setBuildingFilter] = useState(['elevator', 'apartment', 'house', 'store'])
-  const [totalPriceRange, setTotalPriceRange] = useState({ min: '', max: '' })
-  const [totalPingRange, setTotalPingRange] = useState({ min: '', max: '' })
   const {
     isProcessing,
     manifest,
@@ -78,6 +76,13 @@ export function useDashboardModel() {
     })
   }, [comparisonDistricts, ensureDistrictLoaded])
 
+  useEffect(() => {
+    if (!isRealMode) return
+    availableDistricts.forEach((district) => {
+      ensureDistrictLoaded(district)
+    })
+  }, [availableDistricts, ensureDistrictLoaded, isRealMode])
+
   const districtData = districtTrendMap[selectedDistrict] ?? districtTrendMap.東區
   const districtMeta = manifest.districtMetaByName?.[selectedDistrict] || null
   const loadedSelectedDistrictRecords = useMemo(
@@ -96,21 +101,10 @@ export function useDashboardModel() {
         ? loadedSelectedDistrictRecords.filter(
             (record) =>
               propertyTypeFilter.includes(record.type) &&
-              checkBuildingMatch(record, buildingFilter) &&
-              (totalPriceRange.min === '' || record.totalPrice / 10000 >= Number(totalPriceRange.min)) &&
-              (totalPriceRange.max === '' || record.totalPrice / 10000 <= Number(totalPriceRange.max)) &&
-              (totalPingRange.min === '' || record.totalPing >= Number(totalPingRange.min)) &&
-              (totalPingRange.max === '' || record.totalPing <= Number(totalPingRange.max)),
+              checkBuildingMatch(record, buildingFilter),
           )
         : [],
-    [
-      buildingFilter,
-      isRealMode,
-      loadedSelectedDistrictRecords,
-      propertyTypeFilter,
-      totalPingRange,
-      totalPriceRange,
-    ],
+    [buildingFilter, isRealMode, loadedSelectedDistrictRecords, propertyTypeFilter],
   )
 
   const districtRecords = useMemo(
@@ -133,12 +127,39 @@ export function useDashboardModel() {
     [isRealMode, manifest.realOverviews],
   )
 
+  const filteredRealOverviews = useMemo(() => {
+    if (!isRealMode) return realOverviews
+
+    const allLoaded = availableDistricts.every((district) => recordsByDistrict.has(district))
+    if (!allLoaded) return realOverviews
+
+    return availableDistricts
+      .map((district) => {
+        const records = recordsByDistrict.get(district) ?? []
+        const filtered = records.filter(
+          (record) =>
+            propertyTypeFilter.includes(record.type) &&
+            checkBuildingMatch(record, buildingFilter),
+        )
+
+        if (filtered.length === 0) return null
+
+        return {
+          city: '台南市',
+          name: district,
+          ...summarizeDistrictRecords(filtered),
+        }
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.volume - a.volume)
+  }, [availableDistricts, buildingFilter, isRealMode, propertyTypeFilter, realOverviews, recordsByDistrict])
+
   const selectedDistrictOverview = useMemo(
     () =>
-      realOverviews.find((item) => item.name === selectedDistrict) ??
+      filteredRealOverviews.find((item) => item.name === selectedDistrict) ??
       districtMeta?.overview ??
       null,
-    [districtMeta?.overview, realOverviews, selectedDistrict],
+    [districtMeta?.overview, filteredRealOverviews, selectedDistrict],
   )
 
   const popularLocations = useMemo(
@@ -150,8 +171,8 @@ export function useDashboardModel() {
   )
 
   const citySummary = useMemo(
-    () => (isRealMode ? manifest.citySummary : summarizeCity(realOverviews)),
-    [isRealMode, manifest.citySummary, realOverviews],
+    () => (isRealMode ? summarizeCity(filteredRealOverviews) : summarizeCity(realOverviews)),
+    [filteredRealOverviews, isRealMode, realOverviews],
   )
 
   const cityTrend = useMemo(
@@ -272,11 +293,7 @@ export function useDashboardModel() {
       const filtered = records.filter(
         (record) =>
           propertyTypeFilter.includes(record.type) &&
-          checkBuildingMatch(record, buildingFilter) &&
-          (totalPriceRange.min === '' || record.totalPrice / 10000 >= Number(totalPriceRange.min)) &&
-          (totalPriceRange.max === '' || record.totalPrice / 10000 <= Number(totalPriceRange.max)) &&
-          (totalPingRange.min === '' || record.totalPing >= Number(totalPingRange.min)) &&
-          (totalPingRange.max === '' || record.totalPing <= Number(totalPingRange.max)),
+          checkBuildingMatch(record, buildingFilter),
       )
       if (filtered.length > 0) loadedComparisonMap.set(district, filtered)
     })
@@ -286,17 +303,7 @@ export function useDashboardModel() {
     }
 
     return manifest.comparisonSeriesByTab?.[activeTab] || []
-  }, [
-    activeTab,
-    buildingFilter,
-    comparisonDistricts,
-    isRealMode,
-    manifest.comparisonSeriesByTab,
-    propertyTypeFilter,
-    recordsByDistrict,
-    totalPingRange,
-    totalPriceRange,
-  ])
+  }, [activeTab, buildingFilter, comparisonDistricts, isRealMode, manifest.comparisonSeriesByTab, propertyTypeFilter, recordsByDistrict])
 
   const scenarioDistrictOverview = useMemo(
     () =>
@@ -323,8 +330,10 @@ export function useDashboardModel() {
     [scenarioDistrictOverview?.price, scenarioDistrictRecords],
   )
 
-  const minPrice = Math.min(...realOverviews.map((item) => item.price))
-  const maxPrice = Math.max(...realOverviews.map((item) => item.price))
+  const minPrice =
+    filteredRealOverviews.length > 0 ? Math.min(...filteredRealOverviews.map((item) => item.price)) : 0
+  const maxPrice =
+    filteredRealOverviews.length > 0 ? Math.max(...filteredRealOverviews.map((item) => item.price)) : 0
 
   useEffect(() => {
     if (availableDistricts.length > 0 && !availableDistricts.includes(selectedDistrict)) {
@@ -398,10 +407,6 @@ export function useDashboardModel() {
     buildingFilter,
     togglePropertyType,
     toggleBuildingType,
-    totalPriceRange,
-    setTotalPriceRange,
-    totalPingRange,
-    setTotalPingRange,
     isProcessing,
     uploadStats,
     latestDataDate,
@@ -420,7 +425,8 @@ export function useDashboardModel() {
     cityTrend,
     cityVolumeTrend,
     comparisonData,
-    realOverviews,
+    realOverviews: filteredRealOverviews,
+    rawOverviews: realOverviews,
     districtRecords,
     districtBaseRecords,
     districtAllRecords,

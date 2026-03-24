@@ -387,10 +387,6 @@ export function TainanDashboardView({ model, onSelectProject, canManageImports =
     buildingFilter,
     togglePropertyType,
     toggleBuildingType,
-    totalPriceRange,
-    setTotalPriceRange,
-    totalPingRange,
-    setTotalPingRange,
     isProcessing,
     uploadStats,
     latestDataDate,
@@ -618,56 +614,6 @@ export function TainanDashboardView({ model, onSelectProject, canManageImports =
               <button type="button" className={buildingFilter.includes('store') ? 'chip active' : 'chip'} onClick={() => toggleBuildingType('store')}>
                 店面 / 商辦
               </button>
-            </div>
-          </div>
-          <div className="filter-group">
-            <span className="filter-label">總價區間（萬）</span>
-            <div className="range-grid">
-              <label className="range-input">
-                <span>最低</span>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  placeholder="例如 1000"
-                  value={totalPriceRange.min}
-                  onChange={(event) => setTotalPriceRange((previous) => ({ ...previous, min: event.target.value }))}
-                />
-              </label>
-              <label className="range-input">
-                <span>最高</span>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  placeholder="例如 1500"
-                  value={totalPriceRange.max}
-                  onChange={(event) => setTotalPriceRange((previous) => ({ ...previous, max: event.target.value }))}
-                />
-              </label>
-            </div>
-          </div>
-          <div className="filter-group">
-            <span className="filter-label">建坪區間</span>
-            <div className="range-grid">
-              <label className="range-input">
-                <span>最小坪數</span>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  placeholder="例如 20"
-                  value={totalPingRange.min}
-                  onChange={(event) => setTotalPingRange((previous) => ({ ...previous, min: event.target.value }))}
-                />
-              </label>
-              <label className="range-input">
-                <span>最大坪數</span>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  placeholder="例如 45"
-                  value={totalPingRange.max}
-                  onChange={(event) => setTotalPingRange((previous) => ({ ...previous, max: event.target.value }))}
-                />
-              </label>
             </div>
           </div>
         </div>
