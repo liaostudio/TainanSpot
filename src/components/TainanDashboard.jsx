@@ -1,7 +1,8 @@
-import { useRef } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import {
   ResponsiveContainer,
   ComposedChart,
+  LineChart,
   BarChart,
   CartesianGrid,
   XAxis,
@@ -19,7 +20,7 @@ import {
   MapPinned,
 } from 'lucide-react'
 import { tainanGrid, timeTabs } from '../data/dashboardData.js'
-import { buildVolumeSeries, formatPrice, heatColor } from '../utils/dashboard.js'
+import { buildVolumeSeries, formatPrice, heatColor, processTrendData, withMovingAverage } from '../utils/dashboard.js'
 import { useDashboardModel } from '../hooks/useDashboardModel.js'
 import { MetricCard } from './MetricCard.jsx'
 import { TrendBadge } from './TrendBadge.jsx'
@@ -177,9 +178,14 @@ function DataSummaryList({ title, subtitle, items, emptyText = '目前沒有資�
 
 export function ProjectDetailView({ detail, onBack }) {
   const projectTrendRef = useRef(null)
+  const [projectActiveTab, setProjectActiveTab] = useState('1y')
   const topFloor = detail.floorStats?.[0]
-  const latestTrend = detail.trend.at(-1)
-  const previousTrend = detail.trend.at(-2)
+  const projectTrend = useMemo(
+    () => withMovingAverage(processTrendData([...detail.records].reverse(), projectActiveTab)),
+    [detail.records, projectActiveTab],
+  )
+  const latestTrend = projectTrend.at(-1)
+  const previousTrend = projectTrend.at(-2)
   const trendChange =
     latestTrend && previousTrend && previousTrend.price > 0
       ? Number((((latestTrend.price - previousTrend.price) / previousTrend.price) * 100).toFixed(1))
@@ -294,25 +300,41 @@ export function ProjectDetailView({ detail, onBack }) {
       <section id="project-trend" className="project-section project-section-primary">
         <ChartCard
           title="社區價格趨勢"
-          subtitle="主圖只回答一件事：這個社區現在的價格，在歷史上算高、算低，還是差不多。"
+          subtitle="只看時間和中位數價格的變化。1年、3年、5年、10年都只顯示對應期間內的變化。"
           actions={<DownloadChartButton chartRef={projectTrendRef} fileName={`${detail.projectName}-價格變化`} />}
         >
+          <div className="panel-filter-row">
+            <div className="time-tabs compact">
+              {timeTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  className={tab.id === projectActiveTab ? 'is-active' : ''}
+                  onClick={() => setProjectActiveTab(tab.id)}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            <p className="stat-note">統計方式：依所選時間區間，按時間順序顯示社區中位數價格變化。</p>
+          </div>
           <div className="chart-wrap large" ref={projectTrendRef}>
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={detail.trend} margin={{ top: 12, right: 16, left: -18, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eadfce" />
-                <XAxis dataKey="period" tick={{ fontSize: 11, fill: '#7c6855' }} tickLine={false} axisLine={false} />
-                <YAxis yAxisId="left" tick={{ fontSize: 11, fill: '#8b6b36' }} tickLine={false} axisLine={false} />
-                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11, fill: '#1d4ed8' }} tickLine={false} axisLine={false} />
-                <Tooltip contentStyle={{ borderRadius: 16, border: '1px solid #eadfce', background: 'rgba(255,252,247,0.98)' }} />
-                <Legend />
-                <Bar yAxisId="left" dataKey="volume" name="成交筆數" fill="#efc27b" radius={[8, 8, 0, 0]} isAnimationActive={false} />
-                <Line yAxisId="right" dataKey="price" name="中位數價格" type="monotone" stroke="#1d4ed8" strokeWidth={3} dot={{ r: 3 }} isAnimationActive={false} />
-                <Line yAxisId="right" dataKey="maPrice" name="移動平均線" type="monotone" stroke="#059669" strokeWidth={2.5} strokeDasharray="6 5" dot={false} isAnimationActive={false} />
-                <ReferenceLine yAxisId="right" y={detail.stats.maxRecord?.unitPricePing} stroke="#dc2626" strokeDasharray="4 4" ifOverflow="extendDomain" label={{ value: '歷史天花板', fill: '#dc2626', fontSize: 11 }} />
-                <ReferenceLine yAxisId="right" y={detail.stats.minRecord?.unitPricePing} stroke="#059669" strokeDasharray="4 4" ifOverflow="extendDomain" label={{ value: '歷史地板', fill: '#059669', fontSize: 11 }} />
-              </ComposedChart>
-            </ResponsiveContainer>
+            {projectTrend.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={projectTrend} margin={{ top: 12, right: 16, left: -18, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eadfce" />
+                  <XAxis dataKey="period" tick={{ fontSize: 11, fill: '#7c6855' }} tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: '#1d4ed8' }} tickLine={false} axisLine={false} />
+                  <Tooltip contentStyle={{ borderRadius: 16, border: '1px solid #eadfce', background: 'rgba(255,252,247,0.98)' }} />
+                  <Line dataKey="price" name="中位數價格" type="monotone" stroke="#1d4ed8" strokeWidth={3} dot={{ r: 3 }} isAnimationActive={false} />
+                  <Line dataKey="maPrice" name="移動平均線" type="monotone" stroke="#059669" strokeWidth={2.5} strokeDasharray="6 5" dot={false} isAnimationActive={false} />
+                  <ReferenceLine y={detail.stats.maxRecord?.unitPricePing} stroke="#dc2626" strokeDasharray="4 4" ifOverflow="extendDomain" label={{ value: '歷史天花板', fill: '#dc2626', fontSize: 11 }} />
+                  <ReferenceLine y={detail.stats.minRecord?.unitPricePing} stroke="#059669" strokeDasharray="4 4" ifOverflow="extendDomain" label={{ value: '歷史地板', fill: '#059669', fontSize: 11 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="empty-state">目前所選時間區間沒有可顯示的社區價格資料。</div>
+            )}
           </div>
         </ChartCard>
       </section>

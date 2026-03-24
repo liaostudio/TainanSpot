@@ -266,7 +266,7 @@ export function buildRankings(records) {
     .slice(0, 8)
 }
 
-export function buildTotalPriceBand(records) {
+export function buildTotalPriceBand(records, referenceDate = null) {
   if (!records || records.length === 0) {
     return {
       median: 0,
@@ -277,22 +277,24 @@ export function buildTotalPriceBand(records) {
     }
   }
 
-  const latestRecord = records.reduce((latest, record) => {
-    const currentValue = (record.year || 0) * 100 + (record.month || 0)
-    const latestValue = (latest.year || 0) * 100 + (latest.month || 0)
-    return currentValue > latestValue ? record : latest
-  }, records[0])
+  const latestMonthIndex = referenceDate
+    ? referenceDate.year * 12 + (referenceDate.month - 1)
+    : (() => {
+        const latestRecord = records.reduce((latest, record) => {
+          const currentValue = (record.year || 0) * 100 + (record.month || 0)
+          const latestValue = (latest.year || 0) * 100 + (latest.month || 0)
+          return currentValue > latestValue ? record : latest
+        }, records[0])
+        return (latestRecord.year || 0) * 12 + ((latestRecord.month || 1) - 1)
+      })()
 
-  const latestMonthIndex = (latestRecord.year || 0) * 12 + ((latestRecord.month || 1) - 1)
   const recentYearRecords = records.filter((record) => {
     const monthIndex = (record.year || 0) * 12 + ((record.month || 1) - 1)
     const diff = latestMonthIndex - monthIndex
     return diff >= 0 && diff < 12
   })
 
-  const basisRecords = recentYearRecords.length > 0 ? recentYearRecords : records
-
-  const totalPrices = basisRecords
+  const totalPrices = recentYearRecords
     .map((record) => (record.totalPrice > 0 ? record.totalPrice / 10000 : 0))
     .filter((price) => price > 0)
 

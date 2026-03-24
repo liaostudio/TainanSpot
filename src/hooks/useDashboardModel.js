@@ -206,11 +206,20 @@ export function useDashboardModel() {
   )
 
   const scenarioDistrictTrend = useMemo(
-    () =>
-      scenarioDistrictRecords.length > 0
-        ? withMovingAverage(processTrendData(scenarioDistrictRecords, districtActiveTab))
-        : districtMeta?.trendByTab?.[districtActiveTab] || districtData.trend[districtActiveTab] || districtData.trend['1y'],
-    [districtActiveTab, districtData, districtMeta?.trendByTab, scenarioDistrictRecords],
+    () => {
+      if (scenarioDistrictRecords.length > 0) {
+        return withMovingAverage(processTrendData(scenarioDistrictRecords, districtActiveTab))
+      }
+
+      if (isRealMode) return []
+
+      return (
+        districtMeta?.trendByTab?.[districtActiveTab] ||
+        districtData.trend[districtActiveTab] ||
+        districtData.trend['1y']
+      )
+    },
+    [districtActiveTab, districtData, districtMeta?.trendByTab, isRealMode, scenarioDistrictRecords],
   )
 
   const ageDistribution = useMemo(
@@ -230,11 +239,12 @@ export function useDashboardModel() {
   )
 
   const scenarioRankings = useMemo(
-    () =>
-      scenarioDistrictRecords.length > 0
-        ? buildRankings(scenarioDistrictRecords)
-        : districtMeta?.rankings || districtData.rankings,
-    [districtData.rankings, districtMeta?.rankings, scenarioDistrictRecords],
+    () => {
+      if (scenarioDistrictRecords.length > 0) return buildRankings(scenarioDistrictRecords)
+      if (isRealMode) return []
+      return districtMeta?.rankings || districtData.rankings
+    },
+    [districtData.rankings, districtMeta?.rankings, isRealMode, scenarioDistrictRecords],
   )
 
   const insights = useMemo(
@@ -259,16 +269,17 @@ export function useDashboardModel() {
   )
 
   const scenarioRoomMix = useMemo(
-    () =>
-      scenarioDistrictRecords.length > 0
-        ? buildRoomLayout(scenarioDistrictRecords)
-        : districtMeta?.roomMix || [
-            { name: '2房', value: 45 },
-            { name: '3房', value: 33 },
-            { name: '1房', value: 12 },
-            { name: '4房以上', value: 10 },
-          ],
-    [districtMeta?.roomMix, scenarioDistrictRecords],
+    () => {
+      if (scenarioDistrictRecords.length > 0) return buildRoomLayout(scenarioDistrictRecords)
+      if (isRealMode) return []
+      return districtMeta?.roomMix || [
+        { name: '2房', value: 45 },
+        { name: '3房', value: 33 },
+        { name: '1房', value: 12 },
+        { name: '4房以上', value: 10 },
+      ]
+    },
+    [districtMeta?.roomMix, isRealMode, scenarioDistrictRecords],
   )
 
   const typeMix = useMemo(
@@ -283,14 +294,15 @@ export function useDashboardModel() {
   )
 
   const scenarioTypeMix = useMemo(
-    () =>
-      scenarioDistrictRecords.length > 0
-        ? buildPropertyTypeMix(scenarioDistrictRecords)
-        : districtMeta?.typeMix || [
-            { name: '中古屋', value: 65 },
-            { name: '預售屋', value: 35 },
-          ],
-    [districtMeta?.typeMix, scenarioDistrictRecords],
+    () => {
+      if (scenarioDistrictRecords.length > 0) return buildPropertyTypeMix(scenarioDistrictRecords)
+      if (isRealMode) return []
+      return districtMeta?.typeMix || [
+        { name: '中古屋', value: 65 },
+        { name: '預售屋', value: 35 },
+      ]
+    },
+    [districtMeta?.typeMix, isRealMode, scenarioDistrictRecords],
   )
 
   const comparisonData = useMemo(() => {
@@ -315,11 +327,22 @@ export function useDashboardModel() {
   }, [buildingFilter, comparisonDistricts, districtActiveTab, isRealMode, manifest.comparisonSeriesByTab, propertyTypeFilter, recordsByDistrict])
 
   const scenarioDistrictOverview = useMemo(
-    () =>
-      scenarioDistrictRecords.length > 0
-        ? summarizeDistrictRecords(scenarioDistrictRecords)
-        : selectedDistrictOverview,
-    [scenarioDistrictRecords, selectedDistrictOverview],
+    () => {
+      if (scenarioDistrictRecords.length > 0) {
+        return summarizeDistrictRecords(scenarioDistrictRecords)
+      }
+
+      if (isRealMode) {
+        return {
+          price: 0,
+          yoy: 0,
+          volume: 0,
+        }
+      }
+
+      return selectedDistrictOverview
+    },
+    [isRealMode, scenarioDistrictRecords, selectedDistrictOverview],
   )
 
   const scenarioResidentialRecords = useMemo(() => {
@@ -329,9 +352,19 @@ export function useDashboardModel() {
     return filtered.length > 0 ? filtered : scenarioDistrictRecords
   }, [scenarioDistrictRecords])
 
+  const latestReferenceDate = useMemo(() => {
+    if (!latestDataDate) return null
+    const match = latestDataDate.match(/(\d{4})\s*年\s*(\d{1,2})\s*月/)
+    if (!match) return null
+    return {
+      year: Number(match[1]),
+      month: Number(match[2]),
+    }
+  }, [latestDataDate])
+
   const districtTotalPriceBand = useMemo(
-    () => buildTotalPriceBand(scenarioResidentialRecords),
-    [scenarioResidentialRecords],
+    () => buildTotalPriceBand(scenarioResidentialRecords, latestReferenceDate),
+    [latestReferenceDate, scenarioResidentialRecords],
   )
 
   const valueProjects = useMemo(

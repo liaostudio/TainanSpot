@@ -272,6 +272,10 @@ function DistrictPage({ model, onJump }) {
     value: `${item.value} 筆`,
   }))
   const topProjects = model.scenarioRankings.slice(0, 8)
+  const activeTrendFilters = [
+    ...model.propertyTypeFilter.map((type) => propertyTypeLabels[type]),
+    ...model.buildingFilter.map((type) => buildingTypeLabels[type]),
+  ]
   return (
     <div className="page-stack">
       <section className="site-hero panel compact-hero dashboard-hero">
@@ -350,6 +354,9 @@ function DistrictPage({ model, onJump }) {
             </div>
           </div>
         </div>
+        <p className="stat-note">
+          目前已套用：{activeTrendFilters.length > 0 ? activeTrendFilters.join(' / ') : '無'}。
+        </p>
       </section>
 
       <section className="dashboard-grid">
@@ -358,17 +365,21 @@ function DistrictPage({ model, onJump }) {
             <p className="stat-note">統計方式：依目前篩選條件，按時間區間計算區域中位數價格與成交筆數。</p>
           </div>
           <div className="chart-wrap large">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={model.scenarioDistrictTrend} margin={{ top: 12, right: 16, left: -18, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eadfce" />
-                <XAxis dataKey="period" tick={{ fontSize: 11, fill: '#7c6855' }} tickLine={false} axisLine={false} />
-                <YAxis yAxisId="left" tick={{ fontSize: 11, fill: '#8b6b36' }} tickLine={false} axisLine={false} />
-                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11, fill: '#1d4ed8' }} tickLine={false} axisLine={false} />
-                <Tooltip contentStyle={{ borderRadius: 16, border: '1px solid #eadfce', background: 'rgba(255,252,247,0.98)' }} />
-                <Bar yAxisId="left" dataKey="volume" name="成交筆數" fill="#efc27b" radius={[8, 8, 0, 0]} isAnimationActive={false} />
-                <Line yAxisId="right" dataKey="price" name="中位數價格" type="monotone" stroke="#1d4ed8" strokeWidth={3} dot={{ r: 3 }} isAnimationActive={false} />
-              </ComposedChart>
-            </ResponsiveContainer>
+            {model.scenarioDistrictTrend.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={model.scenarioDistrictTrend} margin={{ top: 12, right: 16, left: -18, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eadfce" />
+                  <XAxis dataKey="period" tick={{ fontSize: 11, fill: '#7c6855' }} tickLine={false} axisLine={false} />
+                  <YAxis yAxisId="left" tick={{ fontSize: 11, fill: '#8b6b36' }} tickLine={false} axisLine={false} />
+                  <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11, fill: '#1d4ed8' }} tickLine={false} axisLine={false} />
+                  <Tooltip contentStyle={{ borderRadius: 16, border: '1px solid #eadfce', background: 'rgba(255,252,247,0.98)' }} />
+                  <Bar yAxisId="left" dataKey="volume" name="成交筆數" fill="#efc27b" radius={[8, 8, 0, 0]} isAnimationActive={false} />
+                  <Line yAxisId="right" dataKey="price" name="中位數價格" type="monotone" stroke="#1d4ed8" strokeWidth={3} dot={{ r: 3 }} isAnimationActive={false} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="empty-state">目前篩選條件下沒有可顯示的區域趨勢資料。</div>
+            )}
           </div>
         </ChartCard>
 
