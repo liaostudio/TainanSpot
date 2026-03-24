@@ -432,19 +432,26 @@ export function useDashboardModel() {
     [latestReferenceDate, scenarioResidentialRecords],
   )
 
+  const districtDistributionRecords = useMemo(() => {
+    if (scenarioDistrictRecords.length > 0) return scenarioDistrictRecords
+    if (districtBaseRecords.length > 0) return districtBaseRecords
+    if (districtAllRecords.length > 0) return districtAllRecords
+    return []
+  }, [districtAllRecords, districtBaseRecords, scenarioDistrictRecords])
+
   const districtTotalPriceDistribution = useMemo(
-    () => buildTotalPriceDistribution(scenarioDistrictRecords),
-    [scenarioDistrictRecords],
+    () => buildTotalPriceDistribution(districtDistributionRecords),
+    [districtDistributionRecords],
   )
 
   const districtUnitPriceDistribution = useMemo(
-    () => buildUnitPriceDistribution(scenarioDistrictRecords),
-    [scenarioDistrictRecords],
+    () => buildUnitPriceDistribution(districtDistributionRecords),
+    [districtDistributionRecords],
   )
 
   const districtBuildingTypeMix = useMemo(
-    () => buildBuildingTypeMix(scenarioDistrictRecords),
-    [scenarioDistrictRecords],
+    () => buildBuildingTypeMix(districtDistributionRecords),
+    [districtDistributionRecords],
   )
 
   const productAnalysisRecords = useMemo(() => {

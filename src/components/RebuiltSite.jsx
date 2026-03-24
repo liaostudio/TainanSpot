@@ -366,14 +366,14 @@ function RegionalSection({ model }) {
       <div className="metric-grid">
         <MetricCard label="區域成交件數" value={`${model.scenarioDistrictOverview?.volume ?? '-'} 筆`} helper="依目前條件下最新年度成交樣本統計" accent="blue" showHint={false} />
         <MetricCard label="區域單價中位數" value={`${formatPrice(model.scenarioDistrictOverview?.price)} 萬/坪`} helper="依目前條件下最新年度成交樣本統計" accent="amber" showHint={false} />
-        <MetricCard label="近一年平均總價" value={model.districtTotalPriceBand.label} helper="依最近 12 個月成交資料統計" accent="slate" showHint={false} />
+        <MetricCard label="總價中位數" value={model.scenarioDistrictOverview?.medianTotalPrice ? `${model.scenarioDistrictOverview.medianTotalPrice.toLocaleString()} 萬` : '-'} helper="依目前條件下最新年度成交樣本統計" accent="slate" showHint={false} />
         <MetricCard label="主力房型" value={model.scenarioRoomMix[0]?.name ?? '-'} helper="目前行政區成交最多的房型" accent="green" showHint={false} />
       </div>
 
       <section className="rebuild-grid-3">
-        <DataBreakdownCard title={<><span>總價分布</span><SampleStatusTag includeSpecialSamples={model.includeSpecialSamples} /></>} subtitle="看所選行政區成交總價主要落在哪些價格帶。" items={model.districtTotalPriceDistribution.map((item) => ({ name: item.name, value: `${item.value} 筆` }))} />
-        <DataBreakdownCard title={<><span>單價分布</span><SampleStatusTag includeSpecialSamples={model.includeSpecialSamples} /></>} subtitle="看所選行政區單價主要落在哪些區間。" items={model.districtUnitPriceDistribution.map((item) => ({ name: item.name, value: `${item.value} 筆` }))} />
-        <DataBreakdownCard title="建物型態概況" subtitle="看所選行政區目前成交樣本主要是哪種建物型態。" items={model.districtBuildingTypeMix.map((item) => ({ name: item.name, value: `${item.value} 筆` }))} />
+        <DataBreakdownCard title={<><span>總價分布</span><SampleStatusTag includeSpecialSamples={model.includeSpecialSamples} /></>} subtitle="看所選行政區成交總價主要落在哪些價格帶。" items={model.districtTotalPriceDistribution.map((item) => ({ name: item.name, value: `${item.value} 筆` }))} emptyText="目前條件下，這個行政區沒有可用的總價分布資料。" />
+        <DataBreakdownCard title={<><span>單價分布</span><SampleStatusTag includeSpecialSamples={model.includeSpecialSamples} /></>} subtitle="看所選行政區單價主要落在哪些區間。" items={model.districtUnitPriceDistribution.map((item) => ({ name: item.name, value: `${item.value} 筆` }))} emptyText="目前條件下，這個行政區沒有可用的單價分布資料。" />
+        <DataBreakdownCard title="建物型態概況" subtitle="看所選行政區目前成交樣本主要是哪種建物型態。" items={model.districtBuildingTypeMix.map((item) => ({ name: item.name, value: `${item.value} 筆` }))} emptyText="目前條件下，這個行政區沒有可用的建物型態資料。" />
       </section>
 
       <ChartCard title={<><span>區域價格趨勢</span><SampleStatusTag includeSpecialSamples={model.includeSpecialSamples} /></>} subtitle="依時間區間計算該區的單價中位數與成交件數。">
