@@ -200,7 +200,7 @@ function HomePage({ model, onJump }) {
         <MetricCard label="親民區代表" value={model.citySummary.mostAffordable?.name ?? '-'} helper="目前價格相對低的行政區" accent="slate" />
       </div>
 
-      <section className="dashboard-grid">
+      <section>
         <ChartCard title="行政區價格熱圖" subtitle="顏色越深代表價格越高，方便快速抓各區價格位置。">
           <div className="panel-filter-row">
             <p className="stat-note">統計方式：依目前篩選條件下最新年度各行政區中位數價格著色。</p>
