@@ -4,10 +4,8 @@ import {
   BarChart3,
   Building2,
   FileText,
-  Home,
   LockKeyhole,
   MapPinned,
-  LogOut,
 } from 'lucide-react'
 import {
   ResponsiveContainer,
@@ -18,9 +16,6 @@ import {
   Tooltip,
   Bar,
   Line,
-  PieChart,
-  Pie,
-  Cell,
 } from 'recharts'
 import { useDashboardModel } from '../hooks/useDashboardModel.js'
 import { formatPrice } from '../utils/dashboard.js'
@@ -35,14 +30,13 @@ const LazyProjectDetailView = lazy(() =>
   import('./TainanDashboard.jsx').then((module) => ({ default: module.ProjectDetailView })),
 )
 
-const routeTabs = [
-  { id: 'home', label: '首頁', icon: Home },
-  { id: 'district', label: '行政區找房', icon: MapPinned },
+const sectionTabs = [
+  { id: 'overview', label: '全市總覽', icon: Building2 },
+  { id: 'district', label: '行政區分析', icon: MapPinned },
+  { id: 'community', label: '社區分析', icon: BarChart3 },
   { id: 'pro', label: '專業分析', icon: BarChart3 },
   { id: 'about', label: '資料說明', icon: FileText },
 ]
-
-const pieColors = ['#b45309', '#d97706', '#f59e0b', '#fbbf24']
 const ADMIN_SESSION_KEY = 'tainanspot-admin-auth'
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || '1234'
 
@@ -50,42 +44,55 @@ function normalizePassword(value) {
   return value.replace(/[０-９]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 65248))
 }
 
-function buildHash(page, projectName) {
-  if (page === 'project' && projectName) return `#project/${encodeURIComponent(projectName)}`
-  return `#${page}`
+function scrollToSection(sectionId) {
+  const target = document.getElementById(sectionId)
+  if (!target) return
+  target.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
-function readHash() {
-  const hash = window.location.hash.replace(/^#/, '')
-  if (!hash) return { page: 'home', projectName: null }
-  if (hash.startsWith('project/')) {
-    return {
-      page: 'project',
-      projectName: decodeURIComponent(hash.replace('project/', '')),
-    }
-  }
-  if (['home', 'district', 'pro', 'about'].includes(hash)) return { page: hash, projectName: null }
-  return { page: 'home', projectName: null }
+function DataBreakdownCard({ title, subtitle, items, emptyText = '目前沒有資料' }) {
+  return (
+    <section className="panel data-breakdown-card">
+      <div className="panel-head">
+        <div>
+          <h3>{title}</h3>
+          <p>{subtitle}</p>
+        </div>
+      </div>
+      {items.length > 0 ? (
+        <div className="data-breakdown-list">
+          {items.map((item) => (
+            <div key={item.name} className="data-breakdown-row">
+              <span>{item.name}</span>
+              <strong>{item.value}</strong>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="empty-state">{emptyText}</div>
+      )}
+    </section>
+  )
 }
 
-function SiteNav({ page, onNavigate }) {
+function SiteNav() {
   return (
     <header className="site-header">
       <div className="site-header-inner">
-        <button type="button" className="brand-mark" onClick={() => onNavigate('home')}>
+        <button type="button" className="brand-mark" onClick={() => scrollToSection('overview')}>
           <Building2 size={22} />
           <span>TainanSpot</span>
         </button>
 
         <nav className="site-nav">
-          {routeTabs.map((item) => {
+          {sectionTabs.map((item) => {
             const Icon = item.icon
             return (
               <button
                 key={item.id}
                 type="button"
-                className={page === item.id ? 'site-nav-link active' : 'site-nav-link'}
-                onClick={() => onNavigate(item.id)}
+                className="site-nav-link"
+                onClick={() => scrollToSection(item.id)}
               >
                 <Icon size={16} />
                 {item.label}
@@ -127,7 +134,7 @@ function AdminLoginCard({ password, onPasswordChange, onSubmit, authError }) {
   )
 }
 
-function HomePage({ model, onNavigate, onOpenProject }) {
+function HomePage({ model, onJump, onOpenProject }) {
   const topDistricts = model.realOverviews.slice(0, 8)
   const hottestProjects = model.rankings.slice(0, 6)
 
@@ -142,11 +149,11 @@ function HomePage({ model, onNavigate, onOpenProject }) {
             這個首頁的重點只有一件事：讓你 30 秒內掌握現在市場大概在哪裡。
           </p>
           <div className="cta-row">
-            <button type="button" className="cta-primary" onClick={() => onNavigate('district')}>
+            <button type="button" className="cta-primary" onClick={() => onJump('district')}>
               直接看行政區分析
               <ArrowRight size={16} />
             </button>
-            <button type="button" className="cta-secondary" onClick={() => onNavigate('pro')}>
+            <button type="button" className="cta-secondary" onClick={() => onJump('pro')}>
               進入專業分析
             </button>
           </div>
@@ -210,7 +217,7 @@ function HomePage({ model, onNavigate, onOpenProject }) {
                 className="simple-list-item"
                 onClick={() => {
                   model.setSelectedDistrict(district.name)
-                  onNavigate('district')
+                  onJump('district')
                 }}
               >
                 <div>
@@ -263,7 +270,15 @@ function HomePage({ model, onNavigate, onOpenProject }) {
   )
 }
 
-function DistrictPage({ model, onNavigate, onOpenProject }) {
+function DistrictPage({ model, onJump, onOpenProject }) {
+  const roomMixItems = model.scenarioRoomMix.map((item) => ({
+    name: item.name,
+    value: `${item.value} 筆`,
+  }))
+  const typeMixItems = model.scenarioTypeMix.map((item) => ({
+    name: item.name,
+    value: `${item.value} 筆`,
+  }))
   return (
     <div className="page-stack">
       <section className="site-hero panel compact-hero dashboard-hero">
@@ -331,34 +346,7 @@ function DistrictPage({ model, onNavigate, onOpenProject }) {
           </div>
         </ChartCard>
 
-        <ChartCard title="大家最常買什麼房子" subtitle="這張圖可以幫你看，這區主要是幾房和哪一種房子。">
-          <div className="stacked-mini-grid">
-            <div className="chart-wrap small">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={model.scenarioRoomMix} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={84} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
-                    {model.scenarioRoomMix.map((entry, index) => (
-                      <Cell key={entry.name} fill={pieColors[index % pieColors.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={{ borderRadius: 16, border: '1px solid #eadfce', background: 'rgba(255,252,247,0.98)' }} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="chart-wrap small">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={model.scenarioTypeMix} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={84} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
-                    {model.scenarioTypeMix.map((entry, index) => (
-                      <Cell key={entry.name} fill={pieColors[(index + 1) % pieColors.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={{ borderRadius: 16, border: '1px solid #eadfce', background: 'rgba(255,252,247,0.98)' }} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </ChartCard>
+        <DataBreakdownCard title="房型成交分布" subtitle="直接看數量，不用圓餅圖。" items={roomMixItems} />
       </section>
 
       <section className="dashboard-grid">
@@ -405,10 +393,12 @@ function DistrictPage({ model, onNavigate, onOpenProject }) {
             )}
           </div>
         </section>
+
+        <DataBreakdownCard title="中古屋 / 預售屋分布" subtitle="看這一區目前主要成交的是哪一類產品。" items={typeMixItems} />
       </section>
 
       <section className="district-cta-row">
-        <button type="button" className="cta-secondary" onClick={() => onNavigate('pro')}>
+        <button type="button" className="cta-secondary" onClick={() => onJump('pro')}>
           看更多專業圖表
         </button>
       </section>
@@ -494,20 +484,10 @@ function AboutPage() {
 
 export function TainanSite() {
   const model = useDashboardModel()
-  const [route, setRoute] = useState({ page: 'home', projectName: null })
+  const [selectedProjectName, setSelectedProjectName] = useState(null)
   const [adminPasswordInput, setAdminPasswordInput] = useState('')
   const [adminAuthError, setAdminAuthError] = useState('')
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false)
-
-  useEffect(() => {
-    const syncFromHash = () => {
-      setRoute(readHash())
-    }
-
-    syncFromHash()
-    window.addEventListener('hashchange', syncFromHash)
-    return () => window.removeEventListener('hashchange', syncFromHash)
-  }, [])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -515,17 +495,13 @@ export function TainanSite() {
   }, [])
 
   const projectDetail = useMemo(
-    () => (route.page === 'project' ? model.getProjectDetail(route.projectName) : null),
-    [model, route.page, route.projectName],
+    () => (selectedProjectName ? model.getProjectDetail(selectedProjectName) : null),
+    [model, selectedProjectName],
   )
 
-  const navigate = (page, options = {}) => {
-    const nextHash = buildHash(page, options.projectName)
-    window.location.hash = nextHash
-  }
-
   const openProject = (projectName) => {
-    navigate('project', { projectName })
+    setSelectedProjectName(projectName)
+    setTimeout(() => scrollToSection('community'), 0)
   }
 
   const handleAdminLogin = (event) => {
@@ -549,12 +525,35 @@ export function TainanSite() {
 
   return (
     <div className="site-shell">
-      <SiteNav page={route.page} onNavigate={navigate} />
+      <SiteNav />
 
       <main className="site-main">
-        {route.page === 'home' ? <HomePage model={model} onNavigate={navigate} onOpenProject={openProject} /> : null}
-        {route.page === 'district' ? <DistrictPage model={model} onNavigate={navigate} onOpenProject={openProject} /> : null}
-        {route.page === 'pro' ? (
+        <section id="overview">
+          <HomePage model={model} onJump={scrollToSection} onOpenProject={openProject} />
+        </section>
+
+        <section id="district">
+          <DistrictPage model={model} onJump={scrollToSection} onOpenProject={openProject} />
+        </section>
+
+        <section id="community" className="single-page-section">
+          {projectDetail ? (
+            <Suspense fallback={<section className="panel"><p>正在載入社區資料...</p></section>}>
+              <LazyProjectDetailView detail={projectDetail} onBack={() => scrollToSection('district')} />
+            </Suspense>
+          ) : (
+            <section className="panel empty-state-panel">
+              <div className="panel-head">
+                <div>
+                  <h3>社區與物件深度分析</h3>
+                  <p>從上面的熱門社區排行點一個社區，這裡就會顯示它的價格變化、樓層差異和交易明細。</p>
+                </div>
+              </div>
+            </section>
+          )}
+        </section>
+
+        <section id="pro" className="single-page-section">
           <Suspense fallback={<section className="panel"><p>正在載入專業分析頁...</p></section>}>
             <LazyDashboardView
               model={model}
@@ -571,13 +570,11 @@ export function TainanSite() {
               }
             />
           </Suspense>
-        ) : null}
-        {route.page === 'about' ? <AboutPage /> : null}
-        {route.page === 'project' && projectDetail ? (
-          <Suspense fallback={<section className="panel"><p>正在載入社區資料...</p></section>}>
-            <LazyProjectDetailView detail={projectDetail} onBack={() => navigate('district')} />
-          </Suspense>
-        ) : null}
+        </section>
+
+        <section id="about" className="single-page-section">
+          <AboutPage />
+        </section>
       </main>
     </div>
   )

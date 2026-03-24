@@ -4,9 +4,6 @@ import {
   ComposedChart,
   LineChart,
   BarChart,
-  PieChart,
-  Pie,
-  Cell,
   CartesianGrid,
   XAxis,
   YAxis,
@@ -37,9 +34,7 @@ import { MetricCard } from './MetricCard.jsx'
 import { TrendBadge } from './TrendBadge.jsx'
 import { ChartCard } from './ChartCard.jsx'
 
-const pieColors = ['#b45309', '#d97706', '#f59e0b', '#fbbf24', '#fcd34d']
 const compareColors = ['#1d4ed8', '#059669', '#d97706', '#dc2626']
-const typeColors = ['#1d4ed8', '#d97706']
 
 function saveChartAsImage(containerRef, fileName) {
   const container = containerRef?.current
@@ -166,6 +161,31 @@ function DetailMetric({ label, value, helper }) {
   )
 }
 
+function DataSummaryList({ title, subtitle, items, emptyText = '目前沒有資料' }) {
+  return (
+    <section className="panel chart-card">
+      <div className="panel-head">
+        <div>
+          <h3>{title}</h3>
+          <p>{subtitle}</p>
+        </div>
+      </div>
+      {items.length > 0 ? (
+        <div className="data-breakdown-list">
+          {items.map((item) => (
+            <div key={item.name} className="data-breakdown-row">
+              <span>{item.name}</span>
+              <strong>{item.value}</strong>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="empty-state">{emptyText}</div>
+      )}
+    </section>
+  )
+}
+
 export function ProjectDetailView({ detail, onBack }) {
   const projectTrendRef = useRef(null)
   const topFloor = detail.floorStats?.[0]
@@ -175,6 +195,8 @@ export function ProjectDetailView({ detail, onBack }) {
     latestTrend && previousTrend && previousTrend.price > 0
       ? Number((((latestTrend.price - previousTrend.price) / previousTrend.price) * 100).toFixed(1))
       : null
+  const roomMixItems = detail.roomMix.map((item) => ({ name: item.name, value: `${item.value} 筆` }))
+  const typeMixItems = detail.typeMix.map((item) => ({ name: item.name, value: `${item.value} 筆` }))
 
   return (
     <div className="project-detail-page">
@@ -325,34 +347,7 @@ export function ProjectDetailView({ detail, onBack }) {
           </div>
         </ChartCard>
 
-        <ChartCard title="房型和產品結構" subtitle="補充看大家最常買幾房，還有這個社區主要是預售屋還是中古屋。">
-          <div className="stacked-mini-grid">
-            <div className="chart-wrap small">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={detail.roomMix} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={84} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
-                    {detail.roomMix.map((entry, index) => (
-                      <Cell key={entry.name} fill={pieColors[index % pieColors.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={{ borderRadius: 16, border: '1px solid #eadfce', background: 'rgba(255,252,247,0.98)' }} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="chart-wrap small">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={detail.typeMix} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={84} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
-                    {detail.typeMix.map((entry, index) => (
-                      <Cell key={entry.name} fill={typeColors[index % typeColors.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={{ borderRadius: 16, border: '1px solid #eadfce', background: 'rgba(255,252,247,0.98)' }} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </ChartCard>
+        <DataSummaryList title="房型和產品結構" subtitle="直接看數量分布，判斷這個社區主要成交什麼產品。" items={[...roomMixItems, ...typeMixItems]} />
       </div>
 
       <section id="project-records" className="project-section project-section-table">
@@ -442,6 +437,12 @@ export function TainanDashboardView({ model, onSelectProject, canManageImports =
     minPrice,
     maxPrice,
   } = model
+  const ageDistributionItems = ageDistribution.map((item) => ({
+    name: item.ageGroup,
+    value: `${item.volume} 筆 / 均價 ${formatPrice(item.price)} 萬`,
+  }))
+  const roomMixItems = roomMix.map((item) => ({ name: item.name, value: `${item.value} 筆` }))
+  const typeMixItems = typeMix.map((item) => ({ name: item.name, value: `${item.value} 筆` }))
 
   const openProject = (projectName) => {
     if (onSelectProject) onSelectProject(projectName)
@@ -805,52 +806,13 @@ export function TainanDashboardView({ model, onSelectProject, canManageImports =
             </div>
           </ChartCard>
 
-          <ChartCard title="屋齡結構" subtitle="補充看目前成交主力偏新屋還是偏舊屋。">
-            <div className="chart-wrap medium">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={ageDistribution} dataKey="volume" nameKey="ageGroup" cx="50%" cy="50%" innerRadius={55} outerRadius={95} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
-                    {ageDistribution.map((entry, index) => (
-                      <Cell key={entry.ageGroup} fill={pieColors[index % pieColors.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value, _name, item) => [`${value} 筆`, `${item.payload.ageGroup} / 均價 ${formatPrice(item.payload.price)} 萬`]} contentStyle={{ borderRadius: 16, border: '1px solid #eadfce', background: 'rgba(255,252,247,0.98)' }} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </ChartCard>
+          <DataSummaryList title="屋齡結構" subtitle="用數量和均價直接看目前成交主力偏新屋還是偏舊屋。" items={ageDistributionItems} />
         </div>
 
         <div className="dashboard-grid">
-          <ChartCard title="房型結構" subtitle="看這一區最常成交的是幾房。">
-            <div className="chart-wrap medium">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={roomMix} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={92} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
-                    {roomMix.map((entry, index) => (
-                      <Cell key={entry.name} fill={pieColors[index % pieColors.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={{ borderRadius: 16, border: '1px solid #eadfce', background: 'rgba(255,252,247,0.98)' }} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </ChartCard>
+          <DataSummaryList title="房型結構" subtitle="看這一區最常成交的是幾房。" items={roomMixItems} />
 
-          <ChartCard title="中古屋 / 預售屋" subtitle="看市場主力比較偏哪一種產品。">
-            <div className="chart-wrap medium">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={typeMix} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={92} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
-                    {typeMix.map((entry, index) => (
-                      <Cell key={entry.name} fill={typeColors[index % typeColors.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={{ borderRadius: 16, border: '1px solid #eadfce', background: 'rgba(255,252,247,0.98)' }} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </ChartCard>
+          <DataSummaryList title="中古屋 / 預售屋" subtitle="看市場主力比較偏哪一種產品。" items={typeMixItems} />
         </div>
 
         <div className="dashboard-grid">
