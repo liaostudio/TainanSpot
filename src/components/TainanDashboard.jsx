@@ -168,6 +168,7 @@ function DetailMetric({ label, value, helper }) {
 
 export function ProjectDetailView({ detail, onBack }) {
   const projectTrendRef = useRef(null)
+  const topFloor = detail.floorStats?.[0]
   return (
     <div className="project-detail-page">
       <div className="project-back-row">
@@ -178,16 +179,34 @@ export function ProjectDetailView({ detail, onBack }) {
       </div>
 
       <header className="project-hero panel">
-        <div className="project-hero-head">
-          <div>
-            <p className="eyebrow">Project Focus</p>
+        <div className="project-hero-top">
+          <div className="project-hero-copy">
+            <p className="eyebrow">Community Profile</p>
             <h2>{detail.projectName}</h2>
-            <p className="project-subtitle">這裡把一個社區最重要的資料整理給你看，先看價格，再看成交，再看細節。</p>
+            <p className="project-subtitle">先看這個社區大概多少錢、成交熱不熱，再往下看價格變化、樓層差異和最近成交明細。</p>
+            <div className="project-badges">
+              <span className="upload-chip">以前成交過 {detail.stats.volume} 筆</span>
+              <span className="upload-chip">平均價格 {formatPrice(detail.stats.medianPrice)} 萬/坪</span>
+              <span className="upload-chip">平均總價 {detail.stats.avgTotalPrice} 萬</span>
+            </div>
           </div>
-          <div className="project-badges">
-            <span className="upload-chip">以前成交過 {detail.stats.volume} 筆</span>
-            <span className="upload-chip">平均價格 {formatPrice(detail.stats.medianPrice)} 萬/坪</span>
-          </div>
+          <aside className="project-hero-side">
+            <div className="project-price-panel">
+              <p>社區常見價格</p>
+              <strong>{formatPrice(detail.stats.medianPrice)} 萬/坪</strong>
+              <span>最高 {formatPrice(detail.stats.maxRecord?.unitPricePing)} / 最低 {formatPrice(detail.stats.minRecord?.unitPricePing)}</span>
+            </div>
+            <div className="project-quick-notes">
+              <div>
+                <span>主流總價</span>
+                <strong>{detail.stats.avgTotalPrice} 萬</strong>
+              </div>
+              <div>
+                <span>主流建坪</span>
+                <strong>{detail.stats.avgPing} 坪</strong>
+              </div>
+            </div>
+          </aside>
         </div>
 
         <div className="project-metric-grid">
@@ -200,9 +219,62 @@ export function ProjectDetailView({ detail, onBack }) {
             helper="最貴和最便宜差多少"
           />
         </div>
+
+        <nav className="project-anchor-nav">
+          <a href="#project-overview">社區概況</a>
+          <a href="#project-trend">價格走勢</a>
+          <a href="#project-floor">樓層差異</a>
+          <a href="#project-records">交易明細</a>
+        </nav>
       </header>
 
-      <section className="project-section project-section-primary">
+      <section id="project-overview" className="project-section project-section-overview">
+        <div className="project-overview-grid">
+          <section className="panel project-overview-card">
+            <div className="panel-head">
+              <div>
+                <h3>社區概況</h3>
+                <p>先用最簡單的方式認識這個社區。</p>
+              </div>
+            </div>
+            <div className="project-overview-list">
+              <div><span>成交筆數</span><strong>{detail.stats.volume} 筆</strong></div>
+              <div><span>平均價格</span><strong>{formatPrice(detail.stats.medianPrice)} 萬/坪</strong></div>
+              <div><span>平均總價</span><strong>{detail.stats.avgTotalPrice} 萬</strong></div>
+              <div><span>平均建坪</span><strong>{detail.stats.avgPing} 坪</strong></div>
+            </div>
+          </section>
+
+          <section className="panel project-overview-card">
+            <div className="panel-head">
+              <div>
+                <h3>快速看法</h3>
+                <p>幫你快速知道這個社區目前大概是什麼感覺。</p>
+              </div>
+            </div>
+            <div className="project-summary-list">
+              <div>
+                <span>價格位置</span>
+                <strong>目前價格落在歷史區間中段附近</strong>
+              </div>
+              <div>
+                <span>成交節奏</span>
+                <strong>{detail.trend.at(-1)?.volume || detail.stats.volume} 筆近期成交可參考</strong>
+              </div>
+              <div>
+                <span>主要產品</span>
+                <strong>{detail.roomMix?.[0]?.name || '未標示'} 最常見</strong>
+              </div>
+              <div>
+                <span>樓層觀察</span>
+                <strong>{topFloor ? `${topFloor.level} 成交最多` : '目前資料不多'}</strong>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section id="project-trend" className="project-section project-section-primary">
         <ChartCard
           title="這個社區的價格變化"
           subtitle="看這個社區以前和現在的價格怎麼變。"
@@ -275,7 +347,7 @@ export function ProjectDetailView({ detail, onBack }) {
         </ChartCard>
       </div>
 
-      <section className="project-section project-section-table">
+      <section id="project-records" className="project-section project-section-table">
         <section className="panel transactions-panel">
           <div className="panel-head">
             <div>

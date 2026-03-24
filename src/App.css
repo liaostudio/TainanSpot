@@ -614,12 +614,73 @@
   margin-bottom: 20px;
 }
 
-.project-hero-head {
+.project-hero-top {
   display: flex;
   justify-content: space-between;
-  gap: 16px;
-  align-items: flex-start;
-  margin-bottom: 18px;
+  gap: 20px;
+  align-items: stretch;
+  margin-bottom: 20px;
+}
+
+.project-hero-copy {
+  display: grid;
+  gap: 12px;
+  flex: 1;
+}
+
+.project-hero-side {
+  width: min(320px, 100%);
+  display: grid;
+  gap: 14px;
+}
+
+.project-price-panel,
+.project-quick-notes,
+.project-overview-card {
+  border-radius: 22px;
+  border: 1px solid rgba(130, 101, 69, 0.12);
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.project-price-panel {
+  padding: 18px 18px 16px;
+  display: grid;
+  gap: 8px;
+}
+
+.project-price-panel p,
+.project-price-panel span,
+.project-overview-list span,
+.project-summary-list span {
+  margin: 0;
+  color: #7a6858;
+}
+
+.project-price-panel strong {
+  color: #9f611f;
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.project-quick-notes {
+  padding: 16px 18px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.project-quick-notes div,
+.project-overview-list div,
+.project-summary-list div {
+  display: grid;
+  gap: 4px;
+}
+
+.project-quick-notes strong,
+.project-overview-list strong,
+.project-summary-list strong {
+  color: #312318;
+  font-size: 1.05rem;
 }
 
 .project-subtitle {
@@ -631,12 +692,47 @@
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .project-metric-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.project-anchor-nav {
+  margin-top: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.project-anchor-nav a {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(130, 101, 69, 0.12);
+  background: rgba(255, 250, 243, 0.9);
+  color: #6b573f;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+}
+
+.project-overview-grid {
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  gap: 20px;
+}
+
+.project-overview-card {
+  padding: 22px;
+}
+
+.project-overview-list,
+.project-summary-list {
+  display: grid;
   gap: 14px;
 }
 
@@ -700,7 +796,8 @@
 
   .dashboard-grid,
   .hero-main,
-  .project-detail-grid {
+  .project-detail-grid,
+  .project-overview-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -736,7 +833,7 @@
 
   .ranking-row,
   .filter-row,
-  .project-hero-head,
+  .project-hero-top,
   .upload-actions {
     flex-direction: column;
     align-items: stretch;
@@ -746,8 +843,8 @@
     justify-items: start;
   }
 
-  .project-badges {
-    justify-content: flex-start;
+  .project-quick-notes {
+    grid-template-columns: 1fr;
   }
 }
 
