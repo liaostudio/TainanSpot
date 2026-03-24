@@ -274,6 +274,7 @@
   line-height: 1;
   cursor: help;
   box-shadow: 0 8px 18px rgba(181, 121, 19, 0.2);
+  z-index: 5;
 }
 
 .hint-badge:focus-visible {
@@ -310,6 +311,7 @@
 
 .panel-inline-hint {
   display: inline-flex;
+  margin-top: 10px;
 }
 
 .upload-trigger.secondary,
@@ -1231,7 +1233,7 @@
   align-content: start;
   min-height: 164px;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .metric-card::before {

@@ -192,23 +192,23 @@ function HomePage({ model, onJump }) {
       </section>
 
       <div className="metric-grid">
-        <MetricCard label="全市整體價格" value={`${formatPrice(model.citySummary.price)} 萬/坪`} helper="先抓台南整體價格基準" accent="blue" />
-        <MetricCard label="趨勢方向" value={<TrendBadge value={model.citySummary.yoy} />} helper="快速看目前行情是升是降" accent="amber" />
-        <MetricCard label="成交筆數" value={`${model.citySummary.volume} 筆`} helper={model.latestDataDate ? `最新資料到 ${model.latestDataDate}` : '目前是展示資料模式'} accent="slate" />
-        <MetricCard label="高價區代表" value={model.citySummary.hottest?.name ?? '-'} helper="目前價格最高的行政區" accent="green" />
-        <MetricCard label="親民區代表" value={model.citySummary.mostAffordable?.name ?? '-'} helper="目前價格相對低的行政區" accent="slate" />
+        <MetricCard label="全市整體價格" value={`${formatPrice(model.citySummary.price)} 萬/坪`} helper="先抓台南整體價格基準" accent="blue" showHint={false} />
+        <MetricCard label="趨勢方向" value={<TrendBadge value={model.citySummary.yoy} />} helper="快速看目前行情是升是降" accent="amber" showHint={false} />
+        <MetricCard label="成交筆數" value={`${model.citySummary.volume} 筆`} helper={model.latestDataDate ? `最新資料到 ${model.latestDataDate}` : '目前是展示資料模式'} accent="slate" showHint={false} />
+        <MetricCard label="高價區代表" value={model.citySummary.hottest?.name ?? '-'} helper="目前價格最高的行政區" accent="green" showHint={false} />
+        <MetricCard label="親民區代表" value={model.citySummary.mostAffordable?.name ?? '-'} helper="目前價格相對低的行政區" accent="slate" showHint={false} />
+      </div>
+      <div className="panel-inline-hint">
+        <HintBadge text={model.latestDataDate ? `這 5 張卡都依目前篩選條件統計，資料最新到 ${model.latestDataDate}。` : '這 5 張卡都依目前篩選條件統計。'} />
       </div>
 
       <section>
-        <ChartCard title="行政區價格熱圖" subtitle="顏色越深代表價格越高，方便快速抓各區價格位置。">
-          <div className="panel-filter-row">
-            <HintBadge text="統計方式：依目前篩選條件下最新年度各行政區中位數價格著色。" />
-            <HintBadge
-              text={`目前已套用：${[...model.propertyTypeFilter.map((type) => propertyTypeLabels[type]), ...model.buildingFilter.map((type) => buildingTypeLabels[type])]
-                .filter(Boolean)
-                .join(' / ')} 篩選。`}
-            />
-          </div>
+        <ChartCard
+          title="行政區價格熱圖"
+          subtitle={`顏色越深代表價格越高。統計方式：依目前篩選條件下最新年度各行政區中位數價格著色。已套用：${[...model.propertyTypeFilter.map((type) => propertyTypeLabels[type]), ...model.buildingFilter.map((type) => buildingTypeLabels[type])]
+            .filter(Boolean)
+            .join(' / ')} 篩選。`}
+        >
           <div className="heatmap">
             {tainanGrid.map((cell) => {
               const overview = model.realOverviews.find((item) => item.name === cell.id)
@@ -237,7 +237,10 @@ function HomePage({ model, onJump }) {
       </section>
 
       <section>
-        <ChartCard title="台南全市價量走勢" subtitle="用一張主圖一起看台南整體中位數價格和成交筆數的變化。">
+        <ChartCard
+          title="台南全市價量走勢"
+          subtitle="用一張主圖一起看台南整體中位數價格和成交筆數的變化。統計方式：依所選時間區間，彙整全市中位數價格與成交筆數。"
+        >
           <div className="panel-filter-row">
             <div className="time-tabs compact">
               {timeTabs.map((tab) => (
@@ -246,7 +249,6 @@ function HomePage({ model, onJump }) {
                 </button>
               ))}
             </div>
-            <HintBadge text="統計方式：依所選時間區間，彙整全市中位數價格與成交筆數。" />
           </div>
           <div className="chart-wrap large">
             <ResponsiveContainer width="100%" height="100%">
@@ -300,11 +302,14 @@ function DistrictPage({ model, onJump }) {
       </section>
 
       <div className="metric-grid">
-        <MetricCard label="區域中位數價格" value={`${formatPrice(model.scenarioDistrictOverview?.price)} 萬/坪`} helper="先看這區常見價格" accent="blue" />
-        <MetricCard label="區域趨勢方向" value={<TrendBadge value={model.scenarioDistrictOverview?.yoy} />} helper="快速看最近漲跌" accent="amber" />
-        <MetricCard label="近一年平均總價" value={model.districtTotalPriceBand.label} helper="用近一年成交資料算出的平均總價" accent="slate" />
-        <MetricCard label="區域成交筆數" value={`${model.scenarioDistrictOverview?.volume ?? '-'} 筆`} helper="筆數越多，代表這區越熱" accent="slate" />
-        <MetricCard label="主力房型" value={model.scenarioRoomMix[0]?.name ?? '-'} helper="先看這區主要成交哪一種房型" accent="green" />
+        <MetricCard label="區域中位數價格" value={`${formatPrice(model.scenarioDistrictOverview?.price)} 萬/坪`} helper="先看這區常見價格" accent="blue" showHint={false} />
+        <MetricCard label="區域趨勢方向" value={<TrendBadge value={model.scenarioDistrictOverview?.yoy} />} helper="快速看最近漲跌" accent="amber" showHint={false} />
+        <MetricCard label="近一年平均總價" value={model.districtTotalPriceBand.label} helper="用近一年成交資料算出的平均總價" accent="slate" showHint={false} />
+        <MetricCard label="區域成交筆數" value={`${model.scenarioDistrictOverview?.volume ?? '-'} 筆`} helper="筆數越多，代表這區越熱" accent="slate" showHint={false} />
+        <MetricCard label="主力房型" value={model.scenarioRoomMix[0]?.name ?? '-'} helper="先看這區主要成交哪一種房型" accent="green" showHint={false} />
+      </div>
+      <div className="panel-inline-hint">
+        <HintBadge text="這 5 張卡是目前行政區分析的核心摘要：價格、趨勢、近一年平均總價、成交筆數和主力房型。" />
       </div>
       <section className="panel scenario-panel">
         <div className="panel-head compact">
@@ -390,8 +395,10 @@ function DistrictPage({ model, onJump }) {
       <section className="panel data-breakdown-card">
         <div className="panel-head">
           <div>
-            <h3>這一區值得先看的社區</h3>
-            <p>先從成交筆數較多、資料較完整的社區往下看，判價會更快。</p>
+            <h3 className="panel-title-with-hint">
+              <span>這一區值得先看的社區</span>
+              <HintBadge text="先從成交筆數較多、資料較完整的社區往下看，判價會更快。" />
+            </h3>
           </div>
         </div>
         {topProjects.length > 0 ? (
