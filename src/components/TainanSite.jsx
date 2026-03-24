@@ -17,9 +17,9 @@ import {
   Bar,
   Line,
 } from 'recharts'
-import { timeTabs } from '../data/dashboardData.js'
+import { tainanGrid, timeTabs } from '../data/dashboardData.js'
 import { useDashboardModel } from '../hooks/useDashboardModel.js'
-import { formatPrice, sampleSeries } from '../utils/dashboard.js'
+import { formatPrice, heatColor, sampleSeries } from '../utils/dashboard.js'
 import { MetricCard } from './MetricCard.jsx'
 import { ChartCard } from './ChartCard.jsx'
 import { TrendBadge } from './TrendBadge.jsx'
@@ -146,14 +146,6 @@ function AdminLoginCard({ password, onPasswordChange, onSubmit, authError }) {
 }
 
 function HomePage({ model, onJump }) {
-  const [rankingSort, setRankingSort] = useState('price')
-  const topDistricts = useMemo(() => {
-    const base = [...model.realOverviews]
-    if (rankingSort === 'volume') {
-      return base.sort((a, b) => b.volume - a.volume).slice(0, 8)
-    }
-    return base.sort((a, b) => b.price - a.price).slice(0, 8)
-  }, [model.realOverviews, rankingSort])
   const sampledCityTrend = sampleSeries(model.cityTrend, 24)
 
   return (
@@ -169,7 +161,7 @@ function HomePage({ model, onJump }) {
           <div className="hero-summary-bar">
             <div className="hero-summary-pill">全市價格定位</div>
             <div className="hero-summary-pill">成交熱度變化</div>
-            <div className="hero-summary-pill">行政區價格排行</div>
+            <div className="hero-summary-pill">行政區價格熱圖</div>
           </div>
           <div className="cta-row">
             <button type="button" className="cta-primary" onClick={() => onJump('district')}>
@@ -209,25 +201,9 @@ function HomePage({ model, onJump }) {
       </div>
 
       <section className="dashboard-grid">
-        <section className="panel simple-list-panel">
-          <div className="panel-head">
-            <div>
-              <h3>行政區價格排行</h3>
-              <p>先看哪些區價格高、成交多，最容易抓到全市行情結構。</p>
-            </div>
-          </div>
+        <ChartCard title="行政區價格熱圖" subtitle="顏色越深代表價格越高，方便快速抓各區價格位置。">
           <div className="panel-filter-row">
-            <div className="time-tabs compact">
-              <button type="button" className={rankingSort === 'price' ? 'is-active' : ''} onClick={() => setRankingSort('price')}>
-                價格高到低
-              </button>
-              <button type="button" className={rankingSort === 'volume' ? 'is-active' : ''} onClick={() => setRankingSort('volume')}>
-                成交多到少
-              </button>
-            </div>
-            <p className="stat-note">
-              統計方式：依目前篩選條件下最新年度各行政區{rankingSort === 'price' ? '中位數價格' : '成交筆數'}排序。
-            </p>
+            <p className="stat-note">統計方式：依目前篩選條件下最新年度各行政區中位數價格著色。</p>
             <p className="stat-note">
               目前已套用：
               {[...model.propertyTypeFilter.map((type) => propertyTypeLabels[type]), ...model.buildingFilter.map((type) => buildingTypeLabels[type])]
@@ -236,26 +212,31 @@ function HomePage({ model, onJump }) {
               篩選。
             </p>
           </div>
-          <div className="simple-list">
-            {topDistricts.map((district) => (
-              <button
-                key={district.name}
-                type="button"
-                className="simple-list-item"
-                onClick={() => {
-                  model.setSelectedDistrict(district.name)
-                  onJump('district')
-                }}
-              >
-                <div>
-                  <strong>{district.name}</strong>
-                  <p>{district.volume} 筆成交</p>
-                </div>
-                <span>{formatPrice(district.price)} 萬/坪</span>
-              </button>
-            ))}
+          <div className="heatmap">
+            {tainanGrid.map((cell) => {
+              const overview = model.realOverviews.find((item) => item.name === cell.id)
+              const isSelected = model.selectedDistrict === cell.id
+
+              return (
+                <button
+                  key={cell.id}
+                  type="button"
+                  style={{ gridColumn: cell.c, gridRow: cell.r }}
+                  className={`heat-cell ${heatColor(overview?.price, model.minPrice, model.maxPrice)} ${isSelected ? 'selected' : ''}`}
+                  onClick={() => {
+                    if (model.availableDistricts.includes(cell.id)) {
+                      model.setSelectedDistrict(cell.id)
+                      onJump('district')
+                    }
+                  }}
+                >
+                  <strong>{cell.id}</strong>
+                  <span>{overview ? `${formatPrice(overview.price)}萬` : '無資料'}</span>
+                </button>
+              )
+            })}
           </div>
-        </section>
+        </ChartCard>
       </section>
 
       <section>
