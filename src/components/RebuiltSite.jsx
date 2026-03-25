@@ -91,7 +91,7 @@ function ModuleEntryCard({ title, text, onClick }) {
       <small>分析模組</small>
       <strong>{title}</strong>
       <p>{text}</p>
-      <span>進入</span>
+      <span>查看模組</span>
     </button>
   )
 }
@@ -100,9 +100,9 @@ function HomeSection({ model }) {
   const quickDistricts = model.availableDistricts.slice(0, 8)
   const homeStats = [
     {
-      label: '目前資料',
+      label: '資料期間',
       value: model.latestDataDate || '-',
-      helper: model.isRealMode ? '依已匯入成交資料分析' : '目前為展示資料模式',
+      helper: model.isRealMode ? '依已匯入成交資料統計' : '目前顯示展示資料',
     },
     {
       label: '全市單價中位數',
@@ -121,19 +121,19 @@ function HomeSection({ model }) {
       <section className="rebuild-hero">
         <div className="rebuild-hero-copy">
           <p className="eyebrow">首頁</p>
-          <h1>看懂實價登錄成交資料，從條件比較開始</h1>
+          <h1>實價登錄成交資料分析</h1>
           <p>
-            用區域、交易標的、建物型態、坪數、屋齡、格局、樓層與車位條件，整理你真正看得懂的成交資訊。
+            提供區域、交易標的、建物型態、坪數、屋齡、格局、樓層與車位條件的成交資料整理與比較。
           </p>
           <p className="rebuild-muted">
-            本網站分析內容僅依據已匯入的實價登錄成交資料欄位，不包含開價、生活機能或外部市場資訊。
+            本網站分析內容僅依據已匯入之實價登錄成交資料欄位，不包含開價、生活機能或其他外部市場資訊。
           </p>
           <div className="rebuild-hero-actions">
             <button type="button" className="rebuild-primary-btn" onClick={() => scrollToSection('filters')}>
-              直接開始篩選
+              進入條件篩選
             </button>
             <button type="button" className="rebuild-secondary-btn" onClick={() => scrollToSection('regional')}>
-              先看區域總覽
+              查看區域總覽
             </button>
           </div>
           <div className="hero-quick-stats">
@@ -150,25 +150,25 @@ function HomeSection({ model }) {
           <div className="rebuild-note-card">
             <span>最新資料</span>
             <strong>{model.latestDataDate || '-'}</strong>
-            <p>{model.isRealMode ? '依已匯入成交資料分析' : '目前為展示資料模式'}</p>
+            <p>{model.isRealMode ? '依已匯入成交資料統計' : '目前顯示展示資料'}</p>
           </div>
           <div className="rebuild-note-card">
             <span>分析原則</span>
-            <strong>先看分布</strong>
-            <p>先看資料落在哪裡，再看單一數值，避免不同產品混在一起判讀。</p>
+            <strong>先看分布，再看統計值</strong>
+            <p>建議先檢視資料分布，再參考單一統計值，避免不同產品或條件混合判讀。</p>
           </div>
         </div>
       </section>
 
       <section className="rebuild-grid-2">
-        <ModuleEntryCard title="區域總覽" text="比較各行政區成交件數、總價與單價輪廓，再進單區分析。" onClick={() => scrollToSection('regional')} />
-        <ModuleEntryCard title="條件篩選" text="用區域、產品、坪數、屋齡、樓層與車位條件找出接近需求的樣本。" onClick={() => scrollToSection('filters')} />
+        <ModuleEntryCard title="區域總覽" text="提供各行政區成交件數、總價與單價的比較，並支援單一行政區進一步檢視。" onClick={() => scrollToSection('regional')} />
+        <ModuleEntryCard title="條件篩選" text="依區域、產品、坪數、屋齡、樓層與車位條件篩選成交樣本。" onClick={() => scrollToSection('filters')} />
       </section>
 
       <section className="rebuild-grid-2">
         <DataBreakdownCard
           title="本網站可分析的資料範圍"
-          subtitle="以下都直接來自已匯入的實價登錄欄位，不另外加入外部資料。"
+          subtitle="以下內容均依據已匯入之實價登錄欄位整理，不另行加入外部資料。"
           items={[
             { name: '區域', value: '行政區 / 鄉鎮市區' },
             { name: '產品', value: '交易標的 / 建物型態' },
@@ -181,7 +181,7 @@ function HomeSection({ model }) {
           <div className="panel-head">
             <div>
               <h3>快速區域入口</h3>
-              <p>如果你已經知道想先看哪一區，可以直接進區域總覽。</p>
+              <p>可直接選擇行政區，查看該區成交資料概況。</p>
             </div>
           </div>
           <div className="chip-row">
@@ -220,8 +220,8 @@ function RegionalSection({ model }) {
     <div className="rebuild-stack">
       <SectionIntro
         eyebrow="區域總覽"
-        title="先看各區比較，再進單區分析"
-        description="先比較台南各行政區成交件數、中位數總價與單價中位數，再切到單一行政區看分布與趨勢。"
+        title="行政區成交資料總覽"
+        description="提供台南各行政區成交件數、中位數總價與單價中位數比較，並支援單一行政區分布與趨勢檢視。"
         actions={
           <label className="rebuild-inline-select">
             <span>目前行政區</span>
@@ -277,14 +277,14 @@ function RegionalSection({ model }) {
           <div className="panel-head">
             <div>
               <h3>各區中位數總價比較</h3>
-              <p>依目前條件下最新年度成交樣本，直接看各區主流成交總價排名。</p>
+              <p>依目前條件下最新年度成交樣本，顯示各行政區中位數總價排名。</p>
             </div>
           </div>
           <div className="table-shell">
             <table className="records-table">
               <thead>
                 <tr>
-                  <th>排名</th>
+                  <th>序</th>
                   <th>行政區</th>
                   <th>中位數總價</th>
                   <th>成交件數</th>
@@ -308,14 +308,14 @@ function RegionalSection({ model }) {
           <div className="panel-head">
             <div>
               <h3>各區單價中位數比較</h3>
-              <p>依目前條件下最新年度成交樣本，直接看各區常見單價排名。</p>
+              <p>依目前條件下最新年度成交樣本，顯示各行政區單價中位數排名。</p>
             </div>
           </div>
           <div className="table-shell">
             <table className="records-table">
               <thead>
                 <tr>
-                  <th>排名</th>
+                  <th>序</th>
                   <th>行政區</th>
                   <th>單價中位數</th>
                   <th>成交件數</th>
@@ -338,11 +338,11 @@ function RegionalSection({ model }) {
 
       <section className="panel">
         <div className="panel-head">
-          <div>
-            <h3>各區成交概況</h3>
-            <p>這一張表依目前條件下最新年度成交樣本，先回答哪些區成交比較多、總價大約在哪裡、單價位置在哪裡。</p>
+            <div>
+              <h3>各區成交概況</h3>
+              <p>本表依目前條件下最新年度成交樣本整理，提供各行政區成交件數、總價與單價概況。</p>
+            </div>
           </div>
-        </div>
         <div className="table-shell">
           <table className="records-table">
             <thead>
@@ -351,7 +351,7 @@ function RegionalSection({ model }) {
                 <th>成交件數</th>
                 <th>中位數總價</th>
                 <th>單價中位數</th>
-                <th>趨勢方向</th>
+                <th>年增率</th>
               </tr>
             </thead>
             <tbody>
@@ -381,12 +381,12 @@ function RegionalSection({ model }) {
       </div>
 
       <section className="rebuild-grid-3">
-        <DataBreakdownCard title={<><span>總價分布</span><SampleStatusTag includeSpecialSamples={model.includeSpecialSamples} /></>} subtitle="看所選行政區成交總價主要落在哪些價格帶。" items={model.districtTotalPriceDistribution.map((item) => ({ name: item.name, value: `${item.value} 筆` }))} emptyText="目前條件下，這個行政區沒有可用的總價分布資料。" />
-        <DataBreakdownCard title={<><span>單價分布</span><SampleStatusTag includeSpecialSamples={model.includeSpecialSamples} /></>} subtitle="看所選行政區單價主要落在哪些區間。" items={model.districtUnitPriceDistribution.map((item) => ({ name: item.name, value: `${item.value} 筆` }))} emptyText="目前條件下，這個行政區沒有可用的單價分布資料。" />
-        <DataBreakdownCard title="建物型態概況" subtitle="看所選行政區目前成交樣本主要是哪種建物型態。" items={model.districtBuildingTypeMix.map((item) => ({ name: item.name, value: `${item.value} 筆` }))} emptyText="目前條件下，這個行政區沒有可用的建物型態資料。" />
+        <DataBreakdownCard title={<><span>總價分布</span><SampleStatusTag includeSpecialSamples={model.includeSpecialSamples} /></>} subtitle="顯示所選行政區成交總價主要分布區間。" items={model.districtTotalPriceDistribution.map((item) => ({ name: item.name, value: `${item.value} 筆` }))} emptyText="目前條件下，所選行政區無可顯示之總價分布資料。" />
+        <DataBreakdownCard title={<><span>單價分布</span><SampleStatusTag includeSpecialSamples={model.includeSpecialSamples} /></>} subtitle="顯示所選行政區成交單價主要分布區間。" items={model.districtUnitPriceDistribution.map((item) => ({ name: item.name, value: `${item.value} 筆` }))} emptyText="目前條件下，所選行政區無可顯示之單價分布資料。" />
+        <DataBreakdownCard title="建物型態概況" subtitle="顯示所選行政區成交樣本之建物型態組成。" items={model.districtBuildingTypeMix.map((item) => ({ name: item.name, value: `${item.value} 筆` }))} emptyText="目前條件下，所選行政區無可顯示之建物型態資料。" />
       </section>
 
-      <ChartCard title={<><span>區域價格趨勢</span><SampleStatusTag includeSpecialSamples={model.includeSpecialSamples} /></>} subtitle="依時間區間計算該區的單價中位數與成交件數。">
+      <ChartCard title={<><span>區域價格趨勢</span><SampleStatusTag includeSpecialSamples={model.includeSpecialSamples} /></>} subtitle="依所選時間區間顯示該行政區單價中位數與成交件數變化。">
         <div className="chart-wrap large">
           {model.scenarioDistrictTrend.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
@@ -401,7 +401,7 @@ function RegionalSection({ model }) {
               </ComposedChart>
             </ResponsiveContainer>
           ) : (
-            <div className="empty-state">目前篩選條件下沒有可顯示的區域趨勢資料。</div>
+            <div className="empty-state">目前條件下無可顯示之區域趨勢資料。</div>
           )}
         </div>
       </ChartCard>
@@ -417,8 +417,8 @@ function FilterSection({ model, onOpenRecord, activeRecordKey }) {
     <div className="rebuild-stack">
       <SectionIntro
         eyebrow="條件篩選"
-        title="把成交資料縮小到接近需求的樣本"
-        description="用區域、交易標的、產品類型、建物型態、坪數、屋齡、樓層與車位條件，找到更接近需求的成交資料。總價分布、單價分布與摘要卡都會跟時間區間一起更新。"
+        title="成交樣本條件篩選"
+        description="依區域、交易標的、產品類型、建物型態、坪數、屋齡、樓層與車位條件篩選成交樣本，並同步更新分布、摘要與結果列表。"
       />
 
       <section className="panel">
@@ -559,14 +559,14 @@ function FilterSection({ model, onOpenRecord, activeRecordKey }) {
         <div className="panel-head compact">
           <div>
             <h3>特殊樣本狀態</h3>
-            <p>{model.includeSpecialSamples ? `目前結果已納入特殊樣本，共 ${specialCount.toLocaleString()} 筆。` : '目前結果已排除特殊樣本，較適合作為一般市場比較基準。'}</p>
+            <p>{model.includeSpecialSamples ? `目前結果已納入特殊樣本，共 ${specialCount.toLocaleString()} 筆。` : '目前結果已排除特殊樣本，可作為一般市場比較基準。'}</p>
           </div>
         </div>
       </section>
 
       <section className="rebuild-grid-2">
-        <DataBreakdownCard title={<><span>總價分布</span><SampleStatusTag includeSpecialSamples={model.includeSpecialSamples} /></>} subtitle="先看篩選結果主要落在哪些總價區間。" items={model.filterPageTotalPriceDistribution.map((item) => ({ name: item.name, value: `${item.value} 筆` }))} />
-        <DataBreakdownCard title={<><span>單價分布</span><SampleStatusTag includeSpecialSamples={model.includeSpecialSamples} /></>} subtitle="再看篩選結果主要落在哪些單價區間。" items={model.filterPageUnitPriceDistribution.map((item) => ({ name: item.name, value: `${item.value} 筆` }))} />
+        <DataBreakdownCard title={<><span>總價分布</span><SampleStatusTag includeSpecialSamples={model.includeSpecialSamples} /></>} subtitle="顯示篩選結果之總價主要分布區間。" items={model.filterPageTotalPriceDistribution.map((item) => ({ name: item.name, value: `${item.value} 筆` }))} />
+        <DataBreakdownCard title={<><span>單價分布</span><SampleStatusTag includeSpecialSamples={model.includeSpecialSamples} /></>} subtitle="顯示篩選結果之單價主要分布區間。" items={model.filterPageUnitPriceDistribution.map((item) => ({ name: item.name, value: `${item.value} 筆` }))} />
       </section>
 
       <div className="metric-grid">
@@ -578,16 +578,16 @@ function FilterSection({ model, onOpenRecord, activeRecordKey }) {
 
       <section className="panel">
         <div className="panel-head">
-          <div>
-            <h3>成交結果列表</h3>
-            <p>從這裡進入單筆成交明細頁。</p>
+            <div>
+              <h3>成交結果列表</h3>
+              <p>可由此查看篩選結果，並進入單筆成交明細頁。</p>
+            </div>
           </div>
-        </div>
         <div className="table-shell">
           <table className="records-table">
             <thead>
               <tr>
-                <th>交易年月</th>
+                <th>交易日期</th>
                 <th>位置 / 社區</th>
                 <th>交易標的</th>
                 <th>建物型態</th>
@@ -628,7 +628,7 @@ function DetailSection({ record, onPrev, onNext, hasPrev, hasNext, onBack }) {
         <div className="panel-head">
           <div>
             <h3>成交明細</h3>
-            <p>請先從條件篩選結果列表點一筆成交，這裡才會顯示單筆詳細資料。</p>
+            <p>請先於條件篩選結果列表選擇一筆成交資料，以顯示單筆明細內容。</p>
           </div>
         </div>
       </section>
@@ -640,11 +640,11 @@ function DetailSection({ record, onPrev, onNext, hasPrev, hasNext, onBack }) {
       <SectionIntro
         eyebrow="成交明細"
         title="單筆成交詳細資料"
-        description="這一頁只呈現單筆成交本身，不做推測，讓你直接看清楚主資料、空間條件、車位資訊與備註提醒。"
+        description="本頁依單筆成交資料顯示主資料、空間條件、車位資訊與備註提醒，不另作推測或延伸判斷。"
         actions={
           <div className="rebuild-intro-actions">
-            <button type="button" className="rebuild-secondary-btn" onClick={onBack}>回到條件篩選</button>
-            <button type="button" className="rebuild-secondary-btn" onClick={onPrev} disabled={!hasPrev}>前一筆</button>
+            <button type="button" className="rebuild-secondary-btn" onClick={onBack}>返回條件篩選</button>
+            <button type="button" className="rebuild-secondary-btn" onClick={onPrev} disabled={!hasPrev}>上一筆</button>
             <button type="button" className="rebuild-secondary-btn" onClick={onNext} disabled={!hasNext}>下一筆</button>
           </div>
         }
@@ -661,31 +661,31 @@ function DetailSection({ record, onPrev, onNext, hasPrev, hasNext, onBack }) {
         <div className="panel-head compact">
           <div>
             <h3>樣本狀態</h3>
-            <p>{record.isSpecialSample ? '這筆成交屬於特殊樣本，判讀時不建議直接視為一般市場行情。' : '這筆成交未被標記為特殊樣本。'}</p>
+            <p>{record.isSpecialSample ? '此筆成交屬特殊樣本，判讀時不宜直接視為一般市場行情。' : '此筆成交未標記為特殊樣本。'}</p>
           </div>
         </div>
       </section>
 
       <section className="rebuild-grid-2">
-        <DataBreakdownCard title="主資料" subtitle="先看這筆成交的主資料。" items={[
+        <DataBreakdownCard title="主資料" subtitle="顯示本筆成交之主要資料。" items={[
           { name: '行政區', value: record.district || '-' },
           { name: '交易日期', value: `${record.year} / ${String(record.month).padStart(2, '0')}` },
           { name: '總價', value: record.totalPrice ? `${Math.round(record.totalPrice / 10000)} 萬` : '-' },
           { name: '單價', value: record.unitPricePing ? `${formatPrice(record.unitPricePing)} 萬/坪` : '-' },
         ]} />
-        <DataBreakdownCard title="位置與產品" subtitle="再看位置與產品條件。" items={[
+        <DataBreakdownCard title="位置與產品" subtitle="顯示位置資訊與產品條件。" items={[
           { name: '位置 / 社區', value: record.locationName || record.projectName || '-' },
           { name: '門牌 / 位置', value: record.address || '-' },
           { name: '產品類型', value: record.type === 'presale' ? '預售屋' : '中古屋' },
           { name: '建物型態', value: record.buildType || '-' },
         ]} />
-        <DataBreakdownCard title="空間條件" subtitle="看坪數、格局、樓層與土地資訊。" items={[
+        <DataBreakdownCard title="空間條件" subtitle="顯示坪數、格局、樓層與土地資訊。" items={[
           { name: '建坪', value: record.totalPing ? `${record.totalPing.toFixed(1)} 坪` : '-' },
           { name: '土地坪數', value: record.landPing ? `${record.landPing.toFixed(1)} 坪` : '-' },
           { name: '房數', value: record.roomCount > 0 ? `${record.roomCount} 房` : '-' },
           { name: '樓層', value: record.level || '-' },
         ]} />
-        <DataBreakdownCard title="車位資訊" subtitle="車位資訊與建物價格應分開看。" items={[
+        <DataBreakdownCard title="車位資訊" subtitle="車位資訊與建物價格應分開檢視。" items={[
           { name: '車位狀態', value: record.hasPark ? '有車位' : '無車位' },
           { name: '車位坪數', value: record.parkAreaPing ? `${record.parkAreaPing.toFixed(1)} 坪` : '-' },
           { name: '車位總價', value: record.parkPrice ? `${Math.round(record.parkPrice / 10000)} 萬` : '-' },
@@ -696,13 +696,13 @@ function DetailSection({ record, onPrev, onNext, hasPrev, hasNext, onBack }) {
         <div className="panel-head">
           <div>
             <h3>備註與判讀提醒</h3>
-            <p>備註欄是判斷樣本是否適合直接拿來比較的重要依據。</p>
+            <p>備註欄位可作為判斷樣本是否適合納入比較的重要參考。</p>
           </div>
         </div>
         <div className="info-list detail-note-list">
           <p><strong>備註：</strong>{record.note || '無'}</p>
           {record.isSpecialSample ? <p><strong>特殊樣本原因：</strong>{record.specialReason || '備註含特殊交易關鍵字'}</p> : null}
-          <p><strong>判讀建議：</strong>車位金額與特殊備註都應獨立看，不建議直接和一般成交混在一起比較。</p>
+          <p><strong>判讀提醒：</strong>車位金額與特殊備註建議獨立檢視，避免直接與一般成交樣本混合比較。</p>
         </div>
       </section>
     </div>
